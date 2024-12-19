@@ -1,0 +1,16 @@
+{
+  "name": "taxstats-document-ai",
+  "version": "1.0.0",
+  "description": "A simple HTML front-end application",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "your-start-script",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "firebase": "^9.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
