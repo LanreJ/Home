@@ -10,46 +10,35 @@
 // functions/index.js
 
 // Import required modules
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-const { DocumentProcessorServiceClient } = require('@google-cloud/documentai').v1;
-const fetch = require('node-fetch');
-const { getSecretValue } = require('./secrets'); // Imported from secrets.js
-const Busboy = require('busboy');
-const Joi = require('joi');
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { Configuration, OpenAIApi } = require('openai'); // Added import
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const {DocumentProcessorServiceClient} = require("@google-cloud/documentai").v1;
+const {getSecretValue} = require("./secrets"); // Imported from secrets.js
+const Busboy = require("busboy");
+const Joi = require("joi");
+const {Configuration, OpenAIApi} = require("openai"); // Added import
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.applicationDefault(), // Using default credentials
-  storageBucket: 'taxstats-document-ai.appspot.com', // Replace with your bucket name
+  storageBucket: "taxstats-document-ai.appspot.com", // Replace with your bucket name
 });
 const db = admin.firestore();
 const storage = admin.storage();
-
-// Initialize Secret Manager Client
-const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
-const secretClient = new SecretManagerServiceClient();
-
-// Initialize Document AI Client
-const docAiClient = new DocumentProcessorServiceClient();
 
 // Initialize OpenAI Client
 let openaiClient;
 
 async function initializeOpenAI() {
   try {
-    const openaiApiKey = await getSecretValue('openai.key'); // Replace 'openai.key' with the correct key
+    const openaiApiKey = await getSecretValue("openai.key"); // Replace 'openai.key' with the correct key
     const configuration = new Configuration({
       apiKey: openaiApiKey,
     });
     openaiClient = new OpenAIApi(configuration);
-    console.log('OpenAI client initialized successfully.');
+    console.log("OpenAI client initialized successfully.");
   } catch (error) {
-    console.error('Error initializing OpenAI client:', error);
+    console.error("Error initializing OpenAI client:", error);
     throw error;
   }
 }
@@ -58,15 +47,14 @@ async function initializeOpenAI() {
 const PROJECT_ID = "taxstats-document-ai"; // Replace with your project ID
 const LOCATION = "us"; // Replace with your processor location
 const PROCESSOR_ID = functions.config().docai.processor_id; // Set via Firebase config
-const DOC_AI_PROCESSOR_NAME = `projects/${PROJECT_ID}/locations/${LOCATION}/processors/${PROCESSOR_ID}`;
 
 // Middleware to authenticate requests
 async function authenticateRequest(req, res, next) {
-  const authHeader = req.headers.authorization || '';
+  const authHeader = req.headers.authorization || "";
   const match = authHeader.match(/^Bearer (.*)$/);
   if (!match) {
-    console.error('Authentication failed: No token provided');
-    return res.status(401).json({ error: 'No token provided.' });
+    console.error("Authentication failed: No token provided");
+    return res.status(401).json({error: "No token provided."});
   }
 
   const idToken = match[1];
@@ -75,8 +63,8 @@ async function authenticateRequest(req, res, next) {
     req.user = decodedToken; // Attach user info to request
     next();
   } catch (err) {
-    console.error('Authentication failed: Invalid token', err);
-    return res.status(401).json({ error: 'Invalid or expired token.' });
+    console.error("Authentication failed: Invalid token", err);
+    return res.status(401).json({error: "Invalid or expired token."});
   }
 }
 
@@ -84,38 +72,18 @@ async function authenticateRequest(req, res, next) {
 function asyncHandler(fn) {
   return (req, res) => {
     Promise.resolve(fn(req, res)).catch((err) => {
-      console.error('Function error:', err);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error("Function error:", err);
+      res.status(500).json({error: "Internal server error"});
     });
   };
 }
 
 // Initialize Express App
-const app = require('express')();
-app.use(require('express').json()); // To parse JSON payloads
+const app = require("express")();
+app.use(require("express").json()); // To parse JSON payloads
 
 // Apply Authentication Middleware to all routes
 app.use(authenticateRequest);
-
-// Helper Function: Extract Data from Document AI Response
-function extractDataFromDocument(doc) {
-  let income = 0, taxPaid = 0, expenses = 0;
-  if (doc.entities) {
-    for (const entity of doc.entities) {
-      const val = parseFloat(entity.mentionText.replace(/[^\d.]/g, '')) || 0;
-      if (entity.type.toLowerCase() === 'income') income = val;
-      if (entity.type.toLowerCase() === 'tax_paid') taxPaid = val;
-      if (entity.type.toLowerCase() === 'expenses') expenses = val;
-    }
-  }
-  console.log('Extracted Data:', { income, taxPaid, expenses });
-  return {
-    income,
-    taxPaid,
-    expenses,
-    uploadedAt: admin.firestore.FieldValue.serverTimestamp()
-  };
-}
 
 // Helper Function: Calculate Tax Liability
 function calculateTax(income, expenses, allowances = 12570) {
@@ -125,31 +93,31 @@ function calculateTax(income, expenses, allowances = 12570) {
     // Basic rate calculation, can be expanded for actual UK tax bands
     liability = taxableIncome * 0.20;
   }
-  return { liability, allowances, taxableIncome };
+  return {liability, allowances, taxableIncome};
 }
 
 // Endpoint: Upload Document
-app.post('/uploadDocument', asyncHandler(async (req, res) => {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+app.post("/uploadDocument", asyncHandler(async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({error: "Method not allowed"});
   }
 
-  const busboy = new Busboy({ headers: req.headers });
+  const busboy = new Busboy({headers: req.headers});
   let fileBuffer = null;
   let uploadedFileName = null;
 
-  busboy.on('file', (fieldname, file, filename) => {
-    uploadedFileName = filename || 'doc.pdf';
+  busboy.on("file", (fieldname, file, filename) => {
+    uploadedFileName = filename || "doc.pdf";
     const buffers = [];
-    file.on('data', (data) => buffers.push(data));
-    file.on('end', () => {
+    file.on("data", (data) => buffers.push(data));
+    file.on("end", () => {
       fileBuffer = Buffer.concat(buffers);
     });
   });
 
-  busboy.on('finish', async () => {
+  busboy.on("finish", async () => {
     if (!fileBuffer) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({error: "No file uploaded"});
     }
 
     const fileName = `user-uploads/${Date.now()}-${uploadedFileName}`;
@@ -157,7 +125,7 @@ app.post('/uploadDocument', asyncHandler(async (req, res) => {
 
     try {
       await bucket.file(fileName).save(fileBuffer);
-      console.log('Document uploaded:', fileName);
+      console.log("Document uploaded:", fileName);
 
       // Store file metadata in Firestore
       const fileMeta = {
@@ -166,12 +134,12 @@ app.post('/uploadDocument', asyncHandler(async (req, res) => {
         userId: req.user.uid,
         uploadedAt: admin.firestore.FieldValue.serverTimestamp()
       };
-      await db.collection('userFiles').add(fileMeta);
+      await db.collection("userFiles").add(fileMeta);
 
-      res.json({ message: 'Document uploaded and recorded.', fileMeta });
+      res.json({message: "Document uploaded and recorded.", fileMeta});
     } catch (err) {
-      console.error('Error saving file to bucket:', err);
-      res.status(500).json({ error: 'Failed to upload file' });
+      console.error("Error saving file to bucket:", err);
+      res.status(500).json({error: "Failed to upload file"});
     }
   });
 
@@ -179,12 +147,12 @@ app.post('/uploadDocument', asyncHandler(async (req, res) => {
 }));
 
 // Endpoint: List Documents
-app.get('/listDocuments', asyncHandler(async (req, res) => {
+app.get("/listDocuments", asyncHandler(async (req, res) => {
   const userId = req.user.uid;
   try {
-    const filesSnap = await db.collection('userFiles')
-      .where('userId', '==', userId)
-      .orderBy('uploadedAt', 'desc')
+    const filesSnap = await db.collection("userFiles")
+      .where("userId", "==", userId)
+      .orderBy("uploadedAt", "desc")
       .get();
 
     const files = filesSnap.docs.map(doc => ({
@@ -192,22 +160,22 @@ app.get('/listDocuments', asyncHandler(async (req, res) => {
       ...doc.data()
     }));
 
-    res.json({ files });
+    res.json({files});
   } catch (err) {
-    console.error('Error listing documents:', err);
-    res.status(500).json({ error: 'Failed to list documents' });
+    console.error("Error listing documents:", err);
+    res.status(500).json({error: "Failed to list documents"});
   }
 }));
 
 // Endpoint: Chat with OpenAI
-app.post('/chat', asyncHandler(async (req, res) => {
-  const userMessage = req.body.userMessage || '';
+app.post("/chat", asyncHandler(async (req, res) => {
+  const userMessage = req.body.userMessage || "";
   if (!openaiClient) {
     await initializeOpenAI();
   }
 
-  const docsSnap = await db.collection('documents').orderBy('uploadedAt', 'desc').limit(1).get();
-  let context = 'No documents found.';
+  const docsSnap = await db.collection("documents").orderBy("uploadedAt", "desc").limit(1).get();
+  let context = "No documents found.";
   if (!docsSnap.empty) {
     const docData = docsSnap.docs[0].data();
     context = `User income: £${docData.income}, Tax paid: £${docData.taxPaid}, Expenses: £${docData.expenses}. 
@@ -218,48 +186,41 @@ app.post('/chat', asyncHandler(async (req, res) => {
     const completion = await openaiClient.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [
-        { role: 'system', content: `You are an assistant helping a user complete their UK Self-Assessment. Use the context to minimize questions:\n${context}` },
-        { role: 'user', content: userMessage }
+        {role: "system", content: `You are an assistant helping a user complete their UK Self-Assessment. Use the context to minimize questions:\n${context}`},
+        {role: "user", content: userMessage}
       ]
     });
 
     const reply = completion.data.choices[0].message.content.trim();
-    res.json({ reply });
+    res.json({reply});
   } catch (error) {
-    console.error('Error communicating with OpenAI:', error);
-    res.status(500).json({ error: 'Failed to communicate with AI assistant.' });
+    console.error("Error communicating with OpenAI:", error);
+    res.status(500).json({error: "Failed to communicate with AI assistant."});
   }
 }));
 
 // Endpoint: Get Tax Liability
-app.get('/getTaxLiability', asyncHandler(async (req, res) => {
-  const docsSnap = await db.collection('documents').orderBy('uploadedAt', 'desc').limit(1).get();
+app.get("/getTaxLiability", asyncHandler(async (req, res) => {
+  const docsSnap = await db.collection("documents").orderBy("uploadedAt", "desc").limit(1).get();
   let liability = 0, income = 0, allowances = 12570, expenses = 0;
   if (!docsSnap.empty) {
     const docData = docsSnap.docs[0].data();
     income = docData.income || 0;
     expenses = docData.expenses || 0;
-    const { liability: calcLiability } = calculateTax(income, expenses, allowances);
+    const {liability: calcLiability} = calculateTax(income, expenses, allowances);
     liability = calcLiability;
   }
 
-  res.json({ liability, income, allowances, expenses });
+  res.json({liability, income, allowances, expenses});
 }));
 
 // Endpoint: Submit Return (HMRC Integration - Stub)
-app.post('/submitReturn', asyncHandler(async (req, res) => {
-  const docsSnap = await db.collection('documents').orderBy('uploadedAt', 'desc').limit(1).get();
+app.post("/submitReturn", asyncHandler(async (req, res) => {
+  const docsSnap = await db.collection("documents").orderBy("uploadedAt", "desc").limit(1).get();
   if (docsSnap.empty) {
-    return res.status(400).json({ error: 'No documents found to submit.' });
+    return res.status(400).json({error: "No documents found to submit."});
   }
   const docData = docsSnap.docs[0].data();
-
-  const hmrcPayload = {
-    taxYear: "2023/2024",
-    income: docData.income || 0,
-    expenses: docData.expenses || 0,
-    taxPaid: docData.taxPaid || 0
-  };
 
   // Future: Implement HMRC API submission logic here
   // Example:
@@ -294,12 +255,12 @@ app.post('/submitReturn', asyncHandler(async (req, res) => {
   // }
 
   // Since it's a stub, return a placeholder response
-  res.json({ message: 'Submission successful (stub)' });
+  res.json({message: "Submission successful (stub)"});
 }));
 
 // Example Endpoint: Create User with Validation
-app.post('/createUser', asyncHandler(async (req, res) => {
-  const { name, email } = req.body;
+app.post("/createUser", asyncHandler(async (req, res) => {
+  const {name, email} = req.body;
 
   // Define Joi schema for validation
   const userSchema = Joi.object({
@@ -308,9 +269,9 @@ app.post('/createUser', asyncHandler(async (req, res) => {
   });
 
   // Validate input
-  const { error } = userSchema.validate({ name, email });
+  const {error} = userSchema.validate({name, email});
   if (error) {
-    return res.status(400).json({ error: error.details[0].message });
+    return res.status(400).json({error: error.details[0].message});
   }
 
   // Additional email format validation if needed
@@ -319,52 +280,52 @@ app.post('/createUser', asyncHandler(async (req, res) => {
     return regex.test(email);
   };
   if (!isValidEmail(email)) {
-    return res.status(400).json({ error: 'Please enter a valid email address.' });
+    return res.status(400).json({error: "Please enter a valid email address."});
   }
 
   try {
     // Create user in Firebase Auth
-    const userRecord = await admin.auth().createUser({ email, displayName: name });
-    res.status(200).json({ message: 'User created successfully', userRecord });
+    const userRecord = await admin.auth().createUser({email, displayName: name});
+    res.status(200).json({message: "User created successfully", userRecord});
   } catch (err) {
-    console.error('Error creating user:', err);
-    res.status(500).json({ error: 'Failed to create user.' });
+    console.error("Error creating user:", err);
+    res.status(500).json({error: "Failed to create user."});
   }
 }));
 
 // Example Endpoint: Test Storage
-app.post('/test-storage', asyncHandler(async (req, res) => {
+app.post("/test-storage", asyncHandler(async (req, res) => {
   const bucket = storage.bucket();
-  const file = bucket.file('test-file.txt');
+  const file = bucket.file("test-file.txt");
 
   try {
-    await file.save('This is a test file for the Storage Emulator.');
-    res.status(200).send('File uploaded successfully to Storage!');
+    await file.save("This is a test file for the Storage Emulator.");
+    res.status(200).send("File uploaded successfully to Storage!");
   } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).send('Error uploading file to Storage.');
+    console.error("Error uploading file:", error);
+    res.status(500).send("Error uploading file to Storage.");
   }
 }));
 
 // Example Endpoint: Test Firestore
-app.post('/test-firestore', asyncHandler(async (req, res) => {
-  const testData = { message: 'Hello Firestore!' };
-  const docRef = db.collection('testCollection').doc('testDocument');
+app.post("/test-firestore", asyncHandler(async (req, res) => {
+  const testData = {message: "Hello Firestore!"};
+  const docRef = db.collection("testCollection").doc("testDocument");
 
   try {
     await docRef.set(testData);
-    res.status(200).send('Document written successfully to Firestore!');
+    res.status(200).send("Document written successfully to Firestore!");
   } catch (error) {
-    console.error('Error writing document:', error);
-    res.status(500).send('Error writing document to Firestore.');
+    console.error("Error writing document:", error);
+    res.status(500).send("Error writing document to Firestore.");
   }
 }));
 
 // Root Endpoint
-app.get('/', (req, res) => res.status(200).send('Hello from Firebase Functions!'));
+app.get("/", (req, res) => res.status(200).send("Hello from Firebase Functions!"));
 
 // Hosting Test Endpoint
-app.get('/hosting-test', (req, res) => {
+app.get("/hosting-test", (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -380,8 +341,8 @@ app.get('/hosting-test', (req, res) => {
 });
 
 // Example API Endpoint
-app.get('/api/hello', (req, res) => {
-  res.send('Hello from Firebase Functions!');
+app.get("/api/hello", (req, res) => {
+  res.send("Hello from Firebase Functions!");
 });
 
 // Export the Express app as a single Cloud Function

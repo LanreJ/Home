@@ -1,36 +1,10 @@
-/**
- * secrets.js
- *
- * This module handles retrieving sensitive secrets and configuration values.
- *
- * - Secrets from Google Secret Manager:
- *   Store your API keys (e.g., OpenAI, HMRC credentials) in Secret Manager.
- *   For example, create a secret named "openai_api_key" and store your OpenAI key in it.
- *
- *   Usage:
- *     const openaiApiKey = await getSecretValue('openai_api_key');
- *
- * - Environment variables or Firebase Functions Config:
- *   Certain non-sensitive configuration values (like IDs or locations) can be set as environment variables
- *   or via `firebase functions:config:set`.
- *
- *   Usage:
- *     const functions = require('firebase-functions');
- *     const docAiProcessorId = functions.config().docai.processor_id;
- *     const docAiLocation = functions.config().docai.location;
- *
- *   OR from process.env if you’ve set them at deployment time:
- *     const docAiProcessorId = process.env.DOC_AI_PROCESSOR_ID;
- *     const docAiLocation = process.env.DOC_AI_LOCATION;
- *
- *   Choose one approach and stick to it for consistency.
- */
-
 const functions = require("firebase-functions");
 const {SecretManagerServiceClient} = require("@google-cloud/secret-manager");
 
 // Initialize Secret Manager Client
-const secretClient = new SecretManagerServiceClient();
+const secretClient = new SecretManagerServiceClient({
+  projectId: "taxstats-document-ai",
+});
 
 /**
  * Retrieves a secret value from Google Secret Manager.
@@ -39,8 +13,9 @@ const secretClient = new SecretManagerServiceClient();
  */
 const getSecretValueFromSecretManager = async (key) => {
   try {
+    const projectId = functions.config().gcp.project;
     const [version] = await secretClient.accessSecretVersion({
-      name: `projects/${functions.config().gcp.project}/secrets/${key}/versions/latest`,
+      name: `projects/${projectId}/secrets/${key}/versions/latest`,
     });
     const payload = version.payload.data.toString("utf8");
     return payload;
@@ -87,4 +62,21 @@ const getSecretValue = async (key) => {
   }
 };
 
-module.exports = {getSecretValue, getSecretValueFromSecretManager, getSecretValueFromConfig};
+const someLongString =
+  "This is a very long string that exceeds the maximum allowed line length in ESLint configuration.";
+
+const anotherVeryLongFunctionCall = someFunction(
+  param1,
+  param2,
+  param3,
+  param4,
+  param5,
+  param6,
+  param7
+);
+
+module.exports = {
+  getSecretValue,
+  getSecretValueFromSecretManager,
+  getSecretValueFromConfig,
+};
