@@ -1,43 +1,151 @@
+/* General Styles */
 body {
-    margin: 0; 
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin-top: 50px;
-  }
-  
-  h1 {
-      color: #333;
-  }
-  
-  button {
-      padding: 10px 20px;
-      font-size: 16px;
-  }
-  
-  .container {
-    display: flex;
-    height: 100vh;
-  }
-  
-  .panel {
-    flex: 1;
-    border-right: 1px solid #ccc;
-    padding: 1em;
-    overflow: auto;
-  }
-  
-  .panel:last-child {
-    border-right: none;
-  }
-  
-  #chatWindow {
-    border: 1px solid #aaa; 
-    height: 60vh; 
-    overflow-y: scroll; 
-    padding: 1em; 
-    margin-bottom: 1em;
-  }
-  
-  .message {
-    margin-bottom: 0.5em;
-  }
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #121212;
+  color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+h2 {
+  font-size: 1.2rem;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+button {
+  background-color: #1f1f1f;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  padding: 10px 15px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #333;
+}
+
+input, textarea {
+  font-size: 14px;
+  padding: 10px;
+  background-color: #1f1f1f;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 5px;
+  width: 100%;
+}
+
+/* Layout Styles */
+.main-container {
+  display: flex;
+  width: 95%;
+  height: 90%;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.left-panel {
+  border-right: 1px solid #333;
+}
+
+.center-panel {
+  border-right: 1px solid #333;
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Chat Panel */
+.chat-window {
+  flex: 1;
+  background-color: #292929;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  overflow-y: auto;
+}
+
+.chat-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px;
+}
+
+.chat-btn {
+  width: 100px;
+}
+
+/* Tax Info Panel */
+.tax-info {
+  background-color: #292929;
+  border: 1px solid #333;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.return-preview {
+  background-color: #292929;
+  border: 1px solid #333;
+  padding: 1rem;
+  border-radius: 8px;
+  color: #e0e0e0;
+  height: 150px;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-list li {
+  background-color: #292929;
+  border: 1px solid #333;
+  margin-bottom: 0.5rem;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.refresh-btn {
+  background-color: #4caf50;
+}
+
+.submit-btn {
+  background-color: #007bff;
+  margin-top: 1rem;
+}
+
+.submit-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Document List */
+.documents-list li:hover {
+  background-color: #333;
+}

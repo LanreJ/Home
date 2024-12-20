@@ -1,6 +1,7 @@
 {
   "projects": {
-    "staging": "taxstats-document-ai"
+    "staging": "taxstats-document-ai",
+    "default": "taxstats-document-ai"
   },
   "targets": {},
   "etags": {}

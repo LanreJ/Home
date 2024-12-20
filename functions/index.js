@@ -1,3 +1,12 @@
+/**
+ * Import function triggers from their respective submodules:
+ *
+ * const {onCall} = require("firebase-functions/v2/https");
+ * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ */
+
 // functions/index.js
 
 // Import required modules
@@ -5,13 +14,13 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { DocumentProcessorServiceClient } = require('@google-cloud/documentai').v1;
 const fetch = require('node-fetch');
-const { Configuration, OpenAIApi } = require('openai');
-const { getSecretValue } = require('./secrets');
+const { getSecretValue } = require('./secrets'); // Imported from secrets.js
 const Busboy = require('busboy');
 const Joi = require('joi');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { Configuration, OpenAIApi } = require('openai'); // Added import
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
@@ -30,9 +39,10 @@ const docAiClient = new DocumentProcessorServiceClient();
 
 // Initialize OpenAI Client
 let openaiClient;
+
 async function initializeOpenAI() {
   try {
-    const openaiApiKey = await getSecretValue('openai_api_key'); // Ensure this secret exists
+    const openaiApiKey = await getSecretValue('openai.key'); // Replace 'openai.key' with the correct key
     const configuration = new Configuration({
       apiKey: openaiApiKey,
     });
@@ -40,9 +50,9 @@ async function initializeOpenAI() {
     console.log('OpenAI client initialized successfully.');
   } catch (error) {
     console.error('Error initializing OpenAI client:', error);
+    throw error;
   }
 }
-initializeOpenAI();
 
 // Define Document AI Processor Details
 const PROJECT_ID = "taxstats-document-ai"; // Replace with your project ID
@@ -376,3 +386,8 @@ app.get('/api/hello', (req, res) => {
 
 // Export the Express app as a single Cloud Function
 exports.api = functions.https.onRequest(app);
+
+// Remove or comment out any app.listen():
+// app.listen(PORT, () => {
+//   console.log(`Listening on port ${PORT}`);
+// });
