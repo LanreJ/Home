@@ -21,8 +21,10 @@ let openaiClient;
 
 async function initializeOpenAI() {
   try {
-    const openaiApiKey = await getSecretValue("openai.key");
-    const configuration = new Configuration({ apiKey: openaiApiKey });
+    const openaiApiKey = await getSecretValue("openai.key"); // Replace 'openai.key' with the correct key
+    const configuration = new Configuration({
+      apiKey: openaiApiKey,
+    });
     openaiClient = new OpenAIApi(configuration);
     console.log("OpenAI client initialized successfully.");
   } catch (error) {
@@ -30,6 +32,12 @@ async function initializeOpenAI() {
     throw error;
   }
 }
+
+// Define Document AI Processor Details
+const PROJECT_ID = "taxstats-document-ai"; // Replace with your project ID
+const LOCATION = "us"; // Replace with your processor location
+const PROCESSOR_ID = functions.config().docai.processor_id; // Set via Firebase config
+const DOC_AI_PROCESSOR_NAME = `projects/${PROJECT_ID}/locations/${LOCATION}/processors/${PROCESSOR_ID}`;
 
 // Middleware to authenticate requests
 async function authenticateRequest(req, res, next) {
@@ -71,7 +79,11 @@ app.use(authenticateRequest);
 // Helper Function: Calculate Tax Liability
 function calculateTax(income, expenses, allowances = 12570) {
   const taxableIncome = Math.max(0, income - allowances - expenses);
-  const liability = taxableIncome > 0 ? taxableIncome * 0.2 : 0;
+  let liability = 0;
+  if (taxableIncome > 0) {
+    // Basic rate calculation, can be expanded for actual UK tax bands
+    liability = taxableIncome * 0.2;
+  }
   return { liability, allowances, taxableIncome };
 }
 
@@ -108,6 +120,7 @@ app.post(
         await bucket.file(fileName).save(fileBuffer);
         console.log("Document uploaded:", fileName);
 
+        // Store file metadata in Firestore
         const fileMeta = {
           fileName: uploadedFileName,
           storagePath: fileName,
@@ -169,7 +182,7 @@ app.post(
     let context = "No documents found.";
     if (!docsSnap.empty) {
       const docData = docsSnap.docs[0].data();
-      context = `User income: £${docData.income}, Tax paid: £${docData.taxPaid}, Expenses: £${docData.expenses}. The user wants to complete their Self-Assessment quickly.`;
+      context = `User income: £${docData.income}, Tax paid: £${docData.taxPaid}, Expenses: £${docData.expenses}. The user wants to complete their Self-Assessment quickly. Ask minimal questions to fill any gaps.`;
     }
 
     try {
@@ -193,10 +206,159 @@ app.post(
   })
 );
 
-// Root Endpoint
-app.get("/", (req, res) =>
-  res.status(200).send("Hello from Firebase Functions!")
+// Endpoint: Get Tax Liability
+app.get(
+  "/getTaxLiability",
+  asyncHandler(async (req, res) => {
+    const docsSnap = await db
+      .collection("documents")
+      .orderBy("uploadedAt", "desc")
+      .limit(1)
+      .get();
+    let liability = 0,
+      income = 0,
+      allowances = 12570,
+      expenses = 0;
+    if (!docsSnap.empty) {
+      const docData = docsSnap.docs[0].data();
+      income = docData.income || 0;
+      expenses = docData.expenses || 0;
+      const { liability: calcLiability } = calculateTax(
+        income,
+        expenses,
+        allowances
+      );
+      liability = calcLiability;
+    }
+
+    res.json({ liability, income, allowances, expenses });
+  })
 );
+
+// Endpoint: Submit Return (HMRC Integration - Stub)
+app.post(
+  "/submitReturn",
+  asyncHandler(async (req, res) => {
+    const docsSnap = await db
+      .collection("documents")
+      .orderBy("uploadedAt", "desc")
+      .limit(1)
+      .get();
+    if (docsSnap.empty) {
+      return res.status(400).json({ error: "No documents found to submit." });
+    }
+    const docData = docsSnap.docs[0].data();
+
+    // Since it's a stub, return a placeholder response
+    res.json({ message: "Submission successful (stub)" });
+  })
+);
+
+// Example Endpoint: Create User with Validation
+app.post(
+  "/createUser",
+  asyncHandler(async (req, res) => {
+    const { name, email } = req.body;
+
+    // Define Joi schema for validation
+    const userSchema = Joi.object({
+      name: Joi.string().min(3).required(),
+      email: Joi.string().email().required(),
+    });
+
+    // Validate input
+    const { error } = userSchema.validate({ name, email });
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    // Additional email format validation if needed
+    const isValidEmail = (email) => {
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return regex.test(email);
+    };
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
+
+    try {
+      // Create user in Firebase Auth
+      const userRecord = await admin.auth().createUser({
+        email,
+        displayName: name,
+      });
+      res.status(200).json({ message: "User created successfully", userRecord });
+    } catch (err) {
+      console.error("Error creating user:", err);
+      res.status(500).json({ error: "Failed to create user." });
+    }
+  })
+);
+
+// Example Endpoint: Test Storage
+app.post(
+  "/test-storage",
+  asyncHandler(async (req, res) => {
+    const bucket = storage.bucket();
+    const file = bucket.file("test-file.txt");
+
+    try {
+      await file.save("This is a test file for the Storage Emulator.");
+      res.status(200).send("File uploaded successfully to Storage!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).send("Error uploading file to Storage.");
+    }
+  })
+);
+
+// Example Endpoint: Test Firestore
+app.post(
+  "/test-firestore",
+  asyncHandler(async (req, res) => {
+    const testData = { message: "Hello Firestore!" };
+    const docRef = db.collection("testCollection").doc("testDocument");
+
+    try {
+      await docRef.set(testData);
+      res.status(200).send("Document written successfully to Firestore!");
+    } catch (error) {
+      console.error("Error writing document:", error);
+      res.status(500).send("Error writing document to Firestore.");
+    }
+  })
+);
+
+// Root Endpoint
+app.get("/", (req, res) => res.status(200).send("Hello from Firebase Functions!"));
+
+// Hosting Test Endpoint
+app.get("/hosting-test", (req, res) => {
+  res.send(
+    `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hosting Emulator Test</title>
+</head>
+<body>
+  <h1>Welcome to Firebase Hosting Emulator</h1>
+  <p>If you see this, hosting emulator is working!</p>
+</body>
+</html>`
+  );
+});
+
+// Example API Endpoint
+app.get("/api/hello", (req, res) => {
+  res.send("Hello from Firebase Functions!");
+});
 
 // Export the Express app as a single Cloud Function
 exports.api = functions.https.onRequest(app);
+
+// Remove or comment out any app.listen():
+// app.listen(PORT, () => {
+//   console.log(`Listening on port ${PORT}`);
+// });
