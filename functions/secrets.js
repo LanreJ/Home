@@ -62,19 +62,6 @@ const getSecretValue = async (key) => {
   }
 };
 
-const someLongString =
-  "This is a very long string that exceeds the maximum allowed line length in ESLint configuration.";
-
-const anotherVeryLongFunctionCall = someFunction(
-  param1,
-  param2,
-  param3,
-  param4,
-  param5,
-  param6,
-  param7
-);
-
 module.exports = {
   getSecretValue,
   getSecretValueFromSecretManager,

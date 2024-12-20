@@ -31,4 +31,4 @@ module.exports = {
     },
   ],
   globals: {},
-};
+}; // Added closing comma

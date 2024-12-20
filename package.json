@@ -11,6 +11,9 @@
   "dependencies": {
     "firebase": "^9.0.0"
   },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
   "author": "",
   "license": "ISC"
 }
