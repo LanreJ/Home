@@ -144,15 +144,14 @@ function asyncHandler(fn) {
   };
 }
 
-// Export the Express app as a single Cloud Function
-exports.api = onRequest(app);
+// Export the Express app as a Firebase HTTPS function
+exports.app = functions.https.onRequest(app);
+
+// If you have other functions, export them similarly
+// exports.anotherFunction = functions.https.onRequest(anotherApp);
 
 // Optional: Listen on port only if not running in Firebase Functions environment
-if (!process.env.FUNCTION_NAME) {
-  const port = process.env.PORT || 8080; // Use the PORT environment variable
-  app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-  });
+
 }
 
 // Remove or comment out this block
