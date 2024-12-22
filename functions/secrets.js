@@ -1,26 +1,35 @@
 const functions = require("firebase-functions");
 const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
 
-// Initialize Secret Manager Client
-const secretClient = new SecretManagerServiceClient({
-  projectId: "taxstats-document-ai",
-});
-
 /**
- * Retrieves a secret value from Google Secret Manager.
+ * Retrieves the value of a secret from Google Secret Manager.
  * @param {string} key - The name of the secret.
- * @returns {Promise<string>} - The secret value.
+ * @returns {Promise<string>} - The secret's value.
  */
 const getSecretValueFromSecretManager = async (key) => {
   try {
-    const projectId = functions.config().gcp.project;
+    // Retrieve the project ID from the environment variable
+    const projectId = process.env.GCLOUD_PROJECT || process.env.GCLOUD_PROJECT_ID;
+
+    if (!projectId) {
+      throw new Error("Project ID is not defined in the environment variables.");
+    }
+
+    const secretClient = new SecretManagerServiceClient(); // Uses ADC by default
+
+    // Construct the secret name
+    const secretName = `projects/${projectId}/secrets/${key}/versions/latest`;
+
+    // Access the secret version
     const [version] = await secretClient.accessSecretVersion({
-      name: `projects/${projectId}/secrets/${key}/versions/latest`,
+      name: secretName,
     });
+
+    // Extract the payload as a string
     const payload = version.payload.data.toString("utf8");
     return payload;
   } catch (err) {
-    console.error(`Error accessing secret ${key} from Secret Manager:`, err);
+    console.error(`Error accessing secret '${key}' from Secret Manager:`, err);
     throw err;
   }
 };
@@ -65,6 +74,5 @@ const getSecretValue = async (key) => {
 
 module.exports = {
   getSecretValue,
-  getSecretValueFromSecretManager,
   getSecretValueFromConfig,
 };

@@ -5,20 +5,19 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
     "start": "node index.js",
-    "lint": "eslint . --fix",
-    "prepare": "husky install"
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
   },
   "dependencies": {
+    "@google-cloud/secret-manager": "^5.6.0",
+    "busboy": "^1.6.0",
     "express": "^4.17.1",
-    "firebase": "^11.1.0"
-  },
-  "devDependencies": {
-    "eslint": "^9.17.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
-    "husky": "^9.1.7",
-    "prettier": "^3.4.1"
+    "firebase": "^11.1.0",
+    "joi": "^17.13.3",
+    "openai": "^4.77.0"
   },
   "author": "",
   "license": "ISC",

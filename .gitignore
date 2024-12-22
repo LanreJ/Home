@@ -1,1 +1,97 @@
-node_modules
+# ------------------------------
+# Node.js Dependencies
+# ------------------------------
+node_modules/
+functions/node_modules/
+
+# ------------------------------
+# Logs
+# ------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ------------------------------
+# Runtime Data
+# ------------------------------
+pids/
+*.pid
+*.seed
+
+# ------------------------------
+# Coverage Reports
+# ------------------------------
+coverage/
+*.lcov
+
+# ------------------------------
+# Secrets and API Keys
+# ------------------------------
+# Exclude sensitive files containing secrets or API keys
+secrets.js
+key-file.json
+openai_key.txt
+
+# ------------------------------
+# Build Directories
+# ------------------------------
+dist/
+build/
+out/
+
+# ------------------------------
+# Firebase Debug Logs
+# ------------------------------
+firebase-debug.log
+firebase-debug.*.log
+
+# ------------------------------
+# Environment Variable Files
+# ------------------------------
+.env
+.env.* 
+
+# ------------------------------
+# IDE and Editor Directories/Files
+# ------------------------------
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# ------------------------------
+# Operating System Files
+# ------------------------------
+.DS_Store
+Thumbs.db
+
+# ------------------------------
+# Temporary Files
+# ------------------------------
+tmp/
+temp/
+
+# ------------------------------
+# Git Hooks
+# ------------------------------
+# Exclude Git hooks directory to prevent local hooks from being tracked
+.git/hooks/
+
+# ------------------------------
+# REPL History
+# ------------------------------
+.node_repl_history
+
+# ------------------------------
+# ESLint Cache
+# ------------------------------
+.eslintcache
+
+# ------------------------------
+# Other Temporary or Backup Files
+# ------------------------------
+*.swp
+*~
