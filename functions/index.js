@@ -13,7 +13,7 @@ const logger = require("firebase-functions/logger");
 // Import required modules
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const { getSecretValue, getSecretValueFromConfig } = require("./secrets"); // Updated import
+const { getSecretValue } = require("./secrets"); // Imported from secrets.js
 const Busboy = require("busboy");
 const Joi = require("joi");
 const { Configuration, OpenAIApi } = require("openai"); // Added import
@@ -52,8 +52,7 @@ const initializeOpenAI = async () => {
   }
 };
 
-// Initialize OpenAI when functions start
-initializeOpenAI();
+// Removed the top-level initializeOpenAI() to prevent errors during deployment
 
 // Middleware to authenticate requests
 async function authenticateRequest(req, res, next) {
@@ -208,6 +207,11 @@ app.post(
       res.status(500).json({ error: "Failed to communicate with AI assistant." });
     }
   })
+);
+
+// Root Endpoint
+app.get("/", (req, res) =>
+  res.status(200).send("Hello from Firebase Functions!")
 );
 
 // Example API Endpoint

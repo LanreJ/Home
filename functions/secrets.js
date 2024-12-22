@@ -1,6 +1,8 @@
 const functions = require("firebase-functions");
 const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
 
+const client = new SecretManagerServiceClient();
+
 /**
  * Retrieves the value of a secret from Google Secret Manager.
  * @param {string} key - The name of the secret.

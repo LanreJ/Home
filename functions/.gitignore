@@ -1,2 +1,9 @@
 node_modules/
 *.local
+
+# ------------------------------
+# Secrets and API Keys
+# ------------------------------
+secrets.js
+key-file.json
+openai_key.txt
