@@ -1,58 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaxStats AI</title>
-  <link rel="stylesheet" href="styles.css" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaxStats AI</title>
+    <link rel="stylesheet" href="styles.css" />
 
-  <!-- Firebase SDKs -->
-  <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
-  <script defer src="/__/firebase/11.1.0/firebase-auth-compat.js"></script>
-  <!-- Initialize Firebase -->
-  <script defer src="/__/firebase/init.js"></script>
-</head>
-<body>
-  <div class="main-container">
-    <!-- Left Panel -->
-    <div class="panel left-panel">
-      <h2>Sources</h2>
-      <button class="add-source-btn">+ Add source</button>
-      <input type="file" id="fileInput" class="file-input" />
-      <button id="uploadBtn" class="upload-btn">Upload Document</button>
-      <button id="refreshFilesBtn" class="refresh-btn">Refresh Files</button>
-      <ul id="documentsList" class="documents-list">
-        <!-- Dynamic file list -->
-      </ul>
+    <!-- Firebase SDKs -->
+    <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/11.1.0/firebase-auth-compat.js"></script>
+    <!-- Initialize Firebase -->
+    <script defer src="/__/firebase/init.js"></script>
+  </head>
+  <body>
+    <div class="main-container">
+      <!-- Left Panel -->
+      <div class="panel left-panel">
+        <h2>Sources</h2>
+        <button class="add-source-btn">+ Add source</button>
+        <input type="file" id="fileInput" class="file-input" />
+        <button id="uploadBtn" class="upload-btn">Upload Document</button>
+        <button id="refreshFilesBtn" class="refresh-btn">Refresh Files</button>
+        <ul id="documentsList" class="documents-list">
+          <!-- Dynamic file list -->
+        </ul>
+      </div>
+
+      <!-- Center Panel -->
+      <div class="panel center-panel">
+        <h2>AI Assistant</h2>
+        <div id="chatWindow" class="chat-window">
+          <p class="chat-intro">
+            Welcome to TaxStats AI! Start by uploading a document or asking a
+            question.
+          </p>
+        </div>
+        <div class="chat-controls">
+          <input
+            type="text"
+            id="userMessage"
+            placeholder="Ask about your tax return..."
+            class="chat-input"
+          />
+          <button id="sendBtn" class="chat-btn">Send</button>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="panel right-panel">
+        <h2>Tax Calculator & Return Preview</h2>
+        <div id="taxInfo" class="tax-info">
+          <p>Estimated Tax Liability: £<span id="taxLiability">0</span></p>
+          <p>Income: <span id="income">-</span></p>
+          <p>Allowances: <span id="allowances">-</span></p>
+          <p>Expenses: <span id="expenses">-</span></p>
+        </div>
+        <button id="refreshCalcBtn" class="refresh-btn">
+          Refresh Tax Calculation
+        </button>
+        <textarea
+          id="taxReturn"
+          class="return-preview"
+          placeholder="Edit your tax return here..."
+        ></textarea>
+        <button id="submitReturnBtn" class="submit-btn">Submit Return</button>
+      </div>
     </div>
 
-    <!-- Center Panel -->
-    <div class="panel center-panel">
-      <h2>AI Assistant</h2>
-      <div id="chatWindow" class="chat-window">
-        <p class="chat-intro">Welcome to TaxStats AI! Start by uploading a document or asking a question.</p>
-      </div>
-      <div class="chat-controls">
-        <input type="text" id="userMessage" placeholder="Ask about your tax return..." class="chat-input" />
-        <button id="sendBtn" class="chat-btn">Send</button>
-      </div>
-    </div>
-
-    <!-- Right Panel -->
-    <div class="panel right-panel">
-      <h2>Tax Calculator & Return Preview</h2>
-      <div id="taxInfo" class="tax-info">
-        <p>Estimated Tax Liability: £<span id="taxLiability">0</span></p>
-        <p>Income: <span id="income">-</span></p>
-        <p>Allowances: <span id="allowances">-</span></p>
-        <p>Expenses: <span id="expenses">-</span></p>
-      </div>
-      <button id="refreshCalcBtn" class="refresh-btn">Refresh Tax Calculation</button>
-      <textarea id="taxReturn" class="return-preview" placeholder="Edit your tax return here..."></textarea>
-      <button id="submitReturnBtn" class="submit-btn">Submit Return</button>
-    </div>
-  </div>
-
-  <script type="module" src="script.js"></script>
-</body>
+    <script type="module" src="script.js"></script>
+  </body>
 </html>

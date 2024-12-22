@@ -1,2 +1,80 @@
+# Node modules
 node_modules/
+
+# Local files
 *.local
+
+# Sensitive data
+secrets.js
+openai_key.txt
+
+# Credentials and configuration files
+*.json.key
+*.pem
+*.p12
+keystore.jks
+client_secrets.*
+*.oauth2.*.json
+*.credentials.json
+token.json
+id_rsa
+*.cer
+
+# Environment files
+.env
+.env.*
+.flaskenv
+
+# Cache and temporary files
+.DS_STORE
+Thumbs.db
+ehthumbs.db
+*.DS_Store
+*.swp
+*.swo
+
+# Operating system files
+.Trash
+.Trash-*
+.localized
+
+# IDE and editor files
+.idea/
+.vscode/
+*.pyc
+__pycache__/
+*.mypy_cache/
+
+
+# Build artifacts
+dist/
+build/
+target/
+
+# Serverless functions
+.serverless/
+
+# Deployment configuration
+deploy/
+.deploy/
+
+# Logs and reports
+*.log
+*.log.*
+*.err
+*.err.*
+
+# Test and coverage reports
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+
+
+# General secrets and keys (add more specific patterns as needed)
+secret.*
+*_key.*
+api_key.*
+*.password
+*.secret
+

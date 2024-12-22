@@ -1,5 +1,5 @@
 const functions = require("firebase-functions");
-const {SecretManagerServiceClient} = require("@google-cloud/secret-manager");
+const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
 
 // Initialize Secret Manager Client
 const secretClient = new SecretManagerServiceClient({
@@ -9,7 +9,7 @@ const secretClient = new SecretManagerServiceClient({
 /**
  * Retrieves a secret value from Google Secret Manager.
  * @param {string} key - The name of the secret.
- * @return {Promise<string>} - The secret value.
+ * @returns {Promise<string>} - The secret value.
  */
 const getSecretValueFromSecretManager = async (key) => {
   try {
@@ -19,16 +19,16 @@ const getSecretValueFromSecretManager = async (key) => {
     });
     const payload = version.payload.data.toString("utf8");
     return payload;
-  } catch (error) {
-    console.error(`Error accessing secret ${key} from Secret Manager:`, error);
-    throw error;
+  } catch (err) {
+    console.error(`Error accessing secret ${key} from Secret Manager:`, err);
+    throw err;
   }
 };
 
 /**
  * Retrieves a secret value from Firebase Functions config.
- * @param {string} key - The configuration key in the format 'section.key'.
- * @return {Promise<string>} - The secret value.
+ * @param {string} key - The configuration key in 'section.key' format.
+ * @returns {Promise<string>} - The secret value.
  */
 const getSecretValueFromConfig = async (key) => {
   try {
@@ -39,24 +39,25 @@ const getSecretValueFromConfig = async (key) => {
     const [section, secretKey] = sections;
     const value = functions.config()[section][secretKey];
     if (!value) {
-      throw new Error(`Secret ${key} not found in Firebase Functions config.`);
+      throw new Error(`Secret '${key}' not found in Firebase config.`);
     }
     return value;
-  } catch (error) {
-    console.error(`Error retrieving secret '${key}' from config:`, error);
-    throw error;
+  } catch (err) {
+    console.error("Error retrieving secret from config:", err);
+    throw err;
   }
 };
 
 /**
- * Retrieves a secret value using Secret Manager first, then Firebase Functions config as a fallback.
+ * Tries to retrieve a secret from Secret Manager.
+ * Falls back to Firebase config if Secret Manager fails.
  * @param {string} key - The name of the secret.
- * @return {Promise<string>} - The secret value.
+ * @returns {Promise<string>} - The secret value.
  */
 const getSecretValue = async (key) => {
   try {
     return await getSecretValueFromSecretManager(key);
-  } catch (error) {
+  } catch (e) {
     console.warn(`Falling back to config for secret '${key}'`);
     return await getSecretValueFromConfig(key);
   }

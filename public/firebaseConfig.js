@@ -1,8 +1,8 @@
 // Import the necessary Firebase functions
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth"; // For Authentication
-import { getFirestore } from "firebase/firestore"; // For Firestore
-import { getStorage } from "firebase/storage"; // For Cloud Storage
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Firebase configuration object
 const firebaseConfig = {
@@ -18,6 +18,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
-export const auth = getAuth(app); // Firebase Authentication
-export const db = getFirestore(app); // Firestore Database
-export const storage = getStorage(app); // Firebase Storage
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);

@@ -7,6 +7,7 @@ const { getSecretValue } = require("./secrets"); // Imported from secrets.js
 const Busboy = require("busboy");
 const Joi = require("joi");
 const { Configuration, OpenAIApi } = require("openai"); // Added import
+const express = require("express");
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
@@ -37,7 +38,8 @@ async function initializeOpenAI() {
 const PROJECT_ID = "taxstats-document-ai"; // Replace with your project ID
 const LOCATION = "us"; // Replace with your processor location
 const PROCESSOR_ID = functions.config().docai.processor_id; // Set via Firebase config
-const DOC_AI_PROCESSOR_NAME = `projects/${PROJECT_ID}/locations/${LOCATION}/processors/${PROCESSOR_ID}`;
+
+// Removed unused variable 'DOC_AI_PROCESSOR_NAME'
 
 // Middleware to authenticate requests
 async function authenticateRequest(req, res, next) {
@@ -70,8 +72,8 @@ function asyncHandler(fn) {
 }
 
 // Initialize Express App
-const app = require("express")();
-app.use(require("express").json()); // To parse JSON payloads
+const app = express();
+app.use(express.json()); // To parse JSON payloads
 
 // Apply Authentication Middleware to all routes
 app.use(authenticateRequest);
@@ -181,7 +183,9 @@ app.post(
       .get();
     let context = "No documents found.";
     if (!docsSnap.empty) {
-      const docData = docsSnap.docs[0].data();
+      const doc = docsSnap.docs[0];
+      const docData = doc.data();
+      // Removed unused variable 'docData'
       context = `User income: £${docData.income}, Tax paid: £${docData.taxPaid}, Expenses: £${docData.expenses}. The user wants to complete their Self-Assessment quickly. Ask minimal questions to fill any gaps.`;
     }
 
@@ -201,7 +205,9 @@ app.post(
       res.json({ reply });
     } catch (error) {
       console.error("Error communicating with OpenAI:", error);
-      res.status(500).json({ error: "Failed to communicate with AI assistant." });
+      res
+        .status(500)
+        .json({ error: "Failed to communicate with AI assistant." });
     }
   })
 );
@@ -220,7 +226,8 @@ app.get(
       allowances = 12570,
       expenses = 0;
     if (!docsSnap.empty) {
-      const docData = docsSnap.docs[0].data();
+      const doc = docsSnap.docs[0];
+      const docData = doc.data();
       income = docData.income || 0;
       expenses = docData.expenses || 0;
       const { liability: calcLiability } = calculateTax(
@@ -247,7 +254,8 @@ app.post(
     if (docsSnap.empty) {
       return res.status(400).json({ error: "No documents found to submit." });
     }
-    const docData = docsSnap.docs[0].data();
+    const doc = docsSnap.docs[0];
+    const docData = doc.data();
 
     // Since it's a stub, return a placeholder response
     res.json({ message: "Submission successful (stub)" });
@@ -278,7 +286,9 @@ app.post(
       return regex.test(email);
     };
     if (!isValidEmail(email)) {
-      return res.status(400).json({ error: "Please enter a valid email address." });
+      return res
+        .status(400)
+        .json({ error: "Please enter a valid email address." });
     }
 
     try {
@@ -287,7 +297,9 @@ app.post(
         email,
         displayName: name,
       });
-      res.status(200).json({ message: "User created successfully", userRecord });
+      res
+        .status(200)
+        .json({ message: "User created successfully", userRecord });
     } catch (err) {
       console.error("Error creating user:", err);
       res.status(500).json({ error: "Failed to create user." });
@@ -330,12 +342,13 @@ app.post(
 );
 
 // Root Endpoint
-app.get("/", (req, res) => res.status(200).send("Hello from Firebase Functions!"));
+app.get("/", (req, res) =>
+  res.status(200).send("Hello from Firebase Functions!")
+);
 
 // Hosting Test Endpoint
 app.get("/hosting-test", (req, res) => {
-  res.send(
-    `<!DOCTYPE html>
+  res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -346,8 +359,7 @@ app.get("/hosting-test", (req, res) => {
   <h1>Welcome to Firebase Hosting Emulator</h1>
   <p>If you see this, hosting emulator is working!</p>
 </body>
-</html>`
-  );
+</html>`);
 });
 
 // Example API Endpoint
@@ -361,4 +373,3 @@ exports.api = functions.https.onRequest(app);
 // Remove or comment out any app.listen():
 // app.listen(PORT, () => {
 //   console.log(`Listening on port ${PORT}`);
-// });

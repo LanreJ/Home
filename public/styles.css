@@ -32,7 +32,8 @@ button:hover {
   background-color: #333;
 }
 
-input, textarea {
+input,
+textarea {
   font-size: 14px;
   padding: 10px;
   background-color: #1f1f1f;
