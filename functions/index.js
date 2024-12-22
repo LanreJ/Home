@@ -13,7 +13,7 @@ const logger = require("firebase-functions/logger");
 // Import required modules
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const { getSecretValue } = require("./secrets"); // Imported from secrets.js
+const { getSecretValue, getSecretValueFromConfig } = require("./secrets"); // Updated import
 const Busboy = require("busboy");
 const Joi = require("joi");
 const { Configuration, OpenAIApi } = require("openai"); // Added import
@@ -154,3 +154,11 @@ if (!process.env.FUNCTION_NAME) {
     console.log(`Server listening on port ${port}`);
   });
 }
+
+// Remove or comment out this block
+/*
+const PORT = process.env.PORT || 8332;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+*/

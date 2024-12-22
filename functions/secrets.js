@@ -72,6 +72,7 @@ const getSecretValue = async (key) => {
   }
 };
 
+// Export the functions
 module.exports = {
   getSecretValue,
   getSecretValueFromConfig,

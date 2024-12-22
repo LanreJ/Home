@@ -29,7 +29,6 @@ coverage/
 # ------------------------------
 # Secrets and API Keys
 # ------------------------------
-# Exclude sensitive files containing secrets or API keys
 secrets.js
 key-file.json
 openai_key.txt
@@ -77,7 +76,6 @@ temp/
 # ------------------------------
 # Git Hooks
 # ------------------------------
-# Exclude Git hooks directory to prevent local hooks from being tracked
 .git/hooks/
 
 # ------------------------------
