@@ -1,5 +1,9 @@
-import { auth, db, storage } from "./firebaseConfig.js";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth"; // Import signOut
+import { initializeApp } from "firebase/app";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import { auth, db, storage } from "../firebaseConfig.js"; // Adjust the path as necessary
+import { onAuthStateChanged, signOut } from "firebase/auth"; // Import signOut
 import {
   collection,
   addDoc,
@@ -215,3 +219,24 @@ signOutBtn.addEventListener("click", () => {
 
 // Initialize file list on page load
 refreshFiles();
+
+// Function to refresh tax calculation
+function refreshTaxCalculation() {
+  // Implement your tax calculation logic here
+  console.log("Refreshing tax calculation...");
+  // Example: Fetch updated tax data from Firestore and update the UI
+}
+
+// Function to refresh file list
+function refreshFileList() {
+  // Implement your file listing logic here
+  console.log("Refreshing file list...");
+  // Example: Fetch user files from Firestore and display them
+}
+
+// Function to submit tax return
+function submitTaxReturn() {
+  // Implement your submit tax return logic here
+  console.log("Submitting tax return...");
+  // Example: Send edited tax return data to Firestore or your backend
+}
