@@ -1,12 +1,12 @@
-// Import the necessary Firebase functions
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+// Import the necessary Firebase functions from the CDN
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-storage.js";
 
-// Firebase configuration object
+// Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+  apiKey: "YAIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
   authDomain: "taxstats-document-ai.firebaseapp.com",
   projectId: "taxstats-document-ai",
   storageBucket: "taxstats-document-ai.appspot.com",
@@ -14,13 +14,13 @@ const firebaseConfig = {
   appId: "1:532562763606:web:3d9b6d04e4ed23700600f7",
 };
 
-// Initialize Firebase app
+// Initialize the Firebase app
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Initialize the services
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Export Firebase services for use in other files
-export { auth, db, storage };
+// Export them for use in other modules
+export { app, auth, db, storage };

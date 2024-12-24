@@ -1,72 +1,246 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TaxStats AI</title>
-    <link rel="stylesheet" href="styles.css" />
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Layout</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Inline CSS for your layout -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-    <!-- Firebase SDKs -->
-    <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/11.1.0/firebase-auth-compat.js"></script>
-    <!-- Initialize Firebase -->
-    <script defer src="/__/firebase/init.js"></script>
-  </head>
-  <body>
-    <div class="main-container">
-      <!-- Left Panel -->
-      <div class="panel left-panel">
-        <h2>Sources</h2>
-        <button class="add-source-btn">+ Add source</button>
-        <input type="file" id="fileInput" class="file-input" />
-        <button id="uploadBtn" class="upload-btn">Upload Document</button>
-        <button id="refreshFilesBtn" class="refresh-btn">Refresh Files</button>
-        <ul id="documentsList" class="documents-list">
-          <!-- Dynamic file list -->
-        </ul>
-      </div>
+    body {
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      height: 100vh;
+      background-color: #000;
+      color: #fff;
+    }
 
-      <!-- Center Panel -->
-      <div class="panel center-panel">
-        <h2>AI Assistant</h2>
-        <div id="chatWindow" class="chat-window">
-          <p class="chat-intro">
-            Welcome to TaxStats AI! Start by uploading a document or asking a
-            question.
-          </p>
-        </div>
-        <div class="chat-controls">
-          <input
-            type="text"
-            id="userMessage"
-            placeholder="Ask about your tax return..."
-            class="chat-input"
-          />
-          <button id="sendBtn" class="chat-btn">Send</button>
-        </div>
-      </div>
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+    }
 
-      <!-- Right Panel -->
-      <div class="panel right-panel">
-        <h2>Tax Calculator & Return Preview</h2>
-        <div id="taxInfo" class="tax-info">
-          <p>Estimated Tax Liability: £<span id="taxLiability">0</span></p>
-          <p>Income: <span id="income">-</span></p>
-          <p>Allowances: <span id="allowances">-</span></p>
-          <p>Expenses: <span id="expenses">-</span></p>
+    .section {
+      background-color: #333;
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .sources, .chat, .studio {
+      position: relative;
+    }
+
+    .header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #fff;
+      text-align: center;
+    }
+
+    .content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .button {
+      background-color: #23358b;
+      border: none;
+      padding: 10px 15px;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .button:hover {
+      background-color: #f84723;
+    }
+
+    .file-input {
+      margin-bottom: 10px;
+    }
+
+    .buttons-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .chat-input {
+      margin-top: 20px;
+      display: flex;
+      width: 100%;
+    }
+
+    .chat-input input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 5px 0 0 5px;
+      background-color: #fff;
+      color: #000;
+    }
+
+    .chat-input button {
+      padding: 10px;
+      border: none;
+      background-color: #23358b;
+      color: white;
+      border-radius: 0 5px 5px 0;
+      cursor: pointer;
+    }
+
+    .chat-input button:hover {
+      background-color: #f84723;
+    }
+
+    .add-note {
+      margin-top: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .add-note input {
+      padding: 10px;
+      flex-grow: 1;
+      border: 1px solid #555;
+      border-radius: 5px;
+      background-color: #fff;
+      color: #000;
+    }
+
+    .add-note button {
+      padding: 10px;
+      background-color: #23358b;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .add-note button:hover {
+      background-color: #f84723;
+    }
+
+    .tax-calculator {
+      background-color: #333;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .tax-calculator .header {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+
+    .tax-calculator .content {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-grow: 1;
+    }
+
+    .tax-calculator textarea {
+      width: 100%;
+      height: 150px;
+      border: 1px solid #555;
+      border-radius: 5px;
+      background-color: #fff;
+      color: #000;
+      padding: 10px;
+      flex-grow: 1;
+    }
+
+    .tax-calculator button {
+      padding: 10px;
+      background-color: #23358b;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .tax-calculator button:hover {
+      background-color: #f84723;
+    }
+
+    .logo {
+      width: 100px;
+      height: auto;
+      margin: 0 auto 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sources Section -->
+    <div class="section sources">
+      <div class="header">Sources</div>
+      <div class="content">
+        <input type="file" id="fileInput" class="file-input">
+        <div class="buttons-container">
+          <button id="uploadBtn" class="button">Upload Document</button>
+          <button id="refreshFilesBtn" class="button">Refresh Files</button>
         </div>
-        <button id="refreshCalcBtn" class="refresh-btn">
-          Refresh Tax Calculation
-        </button>
-        <textarea
-          id="taxReturn"
-          class="return-preview"
-          placeholder="Edit your tax return here..."
-        ></textarea>
-        <button id="submitReturnBtn" class="submit-btn">Submit Return</button>
+        <!-- Documents List -->
+        <ul id="documentsList"></ul>
       </div>
     </div>
 
-    <script type="module" src="script.js"></script>
-  </body>
+    <!-- Chat Section -->
+    <div class="section chat">
+      <img src="TaxStats Logo.png" alt="TaxStats Logo" class="logo">
+      <div class="header">AI Assistant</div>
+      <div class="content">
+        <p>Welcome to TaxStats AI! Start by uploading a document or asking a question.</p>
+      </div>
+      <div class="chat-input">
+        <input type="text" id="userMessage" placeholder="Chat about your tax return...">
+        <button id="sendBtn" class="button">Send</button>
+      </div>
+    </div>
+
+    <!-- Tax Calculator Section -->
+    <div class="section tax-calculator">
+      <div class="header">Tax Calculator & Return Preview</div>
+      <div class="content">
+        <p>Estimated Tax Liability: £<span id="taxLiability">0</span></p>
+        <p>Income: £<span id="income">-</span></p>
+        <p>Allowances: £<span id="allowances">-</span></p>
+        <p>Expenses: £<span id="expenses">-</span></p>
+        <button id="refreshTaxBtn" class="button">Refresh Tax Calculation</button>
+        <textarea id="returnEditor" placeholder="Edit your tax return here..."></textarea>
+        <button id="submitReturnBtn" class="button">Submit Return</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optional: Sign-Out Button -->
+  <!-- Uncomment and place appropriately if you have a sign-out button in your UI -->
+  <!-- <button id="signOutBtn" class="button">Sign Out</button> -->
+
+  <!-- Include ES modules at the end of the body -->
+  <script type="module" src="./firebaseConfig.js"></script>
+  <script type="module" src="./script.js"></script>
+</body>
 </html>
