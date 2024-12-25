@@ -2,12 +2,11 @@
 import { auth, db, storage } from "./firebaseConfig.js";
 
 // Import the specific Firebase methods you need from the CDN
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js";
 import {
   collection,
   addDoc,
   query,
-  where,
   orderBy,
   getDocs,
   serverTimestamp,
@@ -35,8 +34,57 @@ document.addEventListener("DOMContentLoaded", () => {
   const income = document.getElementById("income");
   const allowances = document.getElementById("allowances");
   const expenses = document.getElementById("expenses");
+  
+  // Authentication Elements
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const signInBtn = document.getElementById("signInBtn");
+  const signUpBtn = document.getElementById("signUpBtn");
+  const authSection = document.getElementById("authSection");
 
-  // Example auth state observer
+  // Handle Sign Up
+  signUpBtn.addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
+    }
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("User signed up:", userCredential.user.email);
+      alert("Sign-up successful!");
+      // Clear the form
+      emailInput.value = "";
+      passwordInput.value = "";
+    } catch (error) {
+      console.error("Sign-up error:", error.message);
+      alert("Sign-up failed: " + error.message);
+    }
+  });
+
+  // Handle Sign In
+  signInBtn.addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
+    }
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log("User signed in:", userCredential.user.email);
+      alert("Sign-in successful!");
+      // Clear the form
+      emailInput.value = "";
+      passwordInput.value = "";
+    } catch (error) {
+      console.error("Sign-in error:", error.message);
+      alert("Sign-in failed: " + error.message);
+    }
+  });
+
+  // Auth State Observer
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log("User signed in:", user.email);
@@ -50,13 +98,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Function to update UI based on auth state
   function updateUI(isLoggedIn) {
     const elementsToShow = isLoggedIn ? ['uploadBtn', 'refreshFilesBtn', 'sendBtn', 'submitReturnBtn', 'refreshTaxBtn'] : [];
-    const elementsToHide = isLoggedIn ? [] : ['uploadBtn', 'refreshFilesBtn', 'sendBtn', 'submitReturnBtn', 'refreshTaxBtn'];
+    const elementsToHide = isLoggedIn ? ['authSection'] : ['uploadBtn', 'refreshFilesBtn', 'sendBtn', 'submitReturnBtn', 'refreshTaxBtn'];
     
+    // Show elements
     elementsToShow.forEach(id => {
       const elem = document.getElementById(id);
       if (elem) elem.style.display = 'block';
     });
     
+    // Hide elements
     elementsToHide.forEach(id => {
       const elem = document.getElementById(id);
       if (elem) elem.style.display = 'none';
@@ -87,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
           console.log("File available at:", downloadURL);
           alert("Upload successful!");
 
-          // Optionally, add file info to Firestore
+          // Add file info to Firestore
           addDoc(collection(db, "uploads"), {
             fileName: file.name,
             downloadURL: downloadURL,
@@ -97,6 +147,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     );
   });
+
+  console.log("Upload Button:", uploadBtn);
+  console.log("Refresh Files Button:", refreshFilesBtn);
 
   // Event: Refresh Files
   refreshFilesBtn.addEventListener("click", async () => {
