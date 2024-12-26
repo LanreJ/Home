@@ -82,86 +82,150 @@
     };
   </script>
   <style>
+    :root {
+        --primary: #23358b;
+        --primary-dark: #1b2870;
+        --secondary: #f4f8fb;
+        --text: #333;
+        --error: #ff4444;
+        --success: #00C851;
+        --shadow: rgba(0, 0, 0, 0.1);
+    }
+
     body {
-      font-family: "Poppins", sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f4f8fb;
+        font-family: "Poppins", sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--secondary) 0%, #ffffff 100%);
     }
+
+    .logo-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .logo-container img {
+        width: 200px;
+        height: 200px;
+        object-fit: contain;
+    }
+
     .container {
-      width: 400px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      text-align: center;
+        width: 400px;
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px var(--shadow);
+        text-align: center;
+        transition: all 0.3s ease;
     }
+
+    .container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px var(--shadow);
+    }
+
     .toggle-buttons {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 25px;
+        background: var(--secondary);
+        padding: 5px;
+        border-radius: 10px;
     }
+
     .toggle-buttons button {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
-      cursor: pointer;
-      border: none;
-      background: #ccc;
-      color: #333;
+        flex: 1;
+        padding: 12px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text);
+        transition: all 0.3s ease;
     }
+
     .toggle-buttons button.active {
-      background: #007bff;
-      color: #fff;
+        background: var(--primary);
+        color: white;
     }
+
     form {
-      display: none;
-      margin: 0;
+        display: none;
+        margin: 0;
     }
+
     form input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 2px solid var(--secondary);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
     }
+
+    form input:focus {
+        border-color: var(--primary);
+        outline: none;
+    }
+
     form button {
-      width: 100%;
-      padding: 10px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
     }
+
     form button:hover {
-      background: #0056b3;
+        background: var(--primary-dark);
+        transform: translateY(-2px);
     }
+
     .google-btn {
-      background: #4285f4;
+        background: #4285f4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
     }
+
     .google-btn:hover {
-      background: #2c6df2;
+        background: #2c6df2;
     }
+
     #status-message {
-      margin-top: 10px;
-      font-size: 14px;
-      color: red;
+        margin-top: 15px;
+        font-size: 14px;
+        padding: 10px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
     }
+
     .description {
-      margin-bottom: 20px;
-      font-size: 14px;
-      color: #555;
+        margin: 20px 0;
+        font-size: 15px;
+        color: var(--text);
+        line-height: 1.6;
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="logo-container">
+        <img src="TaxStats AI.png" alt="TaxStats AI Logo">
+    </div>
     <h2>Welcome to TaxStats AI</h2>
     <p class="description">
       File your UK self-assessment tax return seamlessly in 30 minutes or less. Leverage AI to file correctly, minimise liabilities, and maximise tax breaks—completely legally!

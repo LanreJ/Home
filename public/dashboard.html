@@ -1,198 +1,375 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaxStats AI Dashboard</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #23358b;
-      color: #fafbfb;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxStats AI Dashboard</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-storage-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 
-    header {
-      background-color: #5e5286;
-      color: #fafbfb;
-      padding: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 24px;
-    }
+    <style>
+        :root[data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent: #23358b;
+            --error: #ff4444;
+            --success: #00C851;
+        }
 
-    header img {
-      height: 60px;
-    }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
 
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-      gap: 10px;
-      flex-grow: 1;
-      padding: 10px;
-      box-sizing: border-box;
-    }
+        header {
+            background-color: var(--bg-secondary);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    .section {
-      background-color: #1e1e1e;
-      border-radius: 8px;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
+        header img {
+            width: 200px;  /* Increased from 80px */
+            height: 200px; /* Increased from 80px */
+            object-fit: contain;
+            margin-right: 20px;
+        }
 
-    h2 {
-      color: #a5adce;
-      font-size: 18px;
-      margin-bottom: 10px;
-    }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 1rem;
+            padding: 1rem;
+        }
 
-    button {
-      background-color: #f84723;
-      border: none;
-      color: #fafbfb;
-      padding: 10px 15px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 5px;
-    }
+        .section {
+            background-color: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
 
-    button:hover {
-      background-color: #e0361f;
-    }
+        button {
+            background-color: var(--accent);
+            color: var(--text-primary);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
 
-    textarea, input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #333;
-      border-radius: 5px;
-      background-color: #262626;
-      color: #ffffff;
-    }
+        button:hover {
+            opacity: 0.9;
+        }
 
-    .file-list, .chat-box, .tax-return-viewer {
-      flex-grow: 1;
-      overflow-y: auto;
-      margin-top: 10px;
-      background: #222;
-      padding: 10px;
-      border-radius: 5px;
-      color: #ccc;
-    }
+        input, textarea {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
 
-    .button-group {
-      display: flex;
-      justify-content: space-between;
-    }
-  </style>
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--text-secondary);
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item a {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 5px 10px;
+            background-color: var(--accent);
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        .file-item a:hover {
+            opacity: 0.9;
+        }
+
+        .chat-window {
+            height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: var(--bg-primary);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .status-message {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            animation: fadeOut 3s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <img src="TaxStats AI.png" alt="TaxStats AI Logo">
-    <span>TaxStats AI Dashboard</span>
-    <button onclick="logout()">Logout</button>
-  </header>
+    <header>
+        <img src="TaxStats AI.png" alt="TaxStats AI Logo" width="80" height="80">
+        <h1>TaxStats AI Dashboard</h1>
+        <button id="logoutBtn">Logout</button>
+    </header>
 
-  <div class="container">
-    <!-- Document Management Section -->
-    <div class="section">
-      <h2>Document Management</h2>
-      <div class="button-group">
-        <button onclick="uploadDocument()">Upload Document</button>
-        <button onclick="refreshDocuments()">Refresh Files</button>
-      </div>
-      <div class="file-list" id="fileList">Your Documents: Loading...</div>
+    <div class="container">
+        <!-- Sources Section -->
+        <div class="section">
+            <h2>Sources</h2>
+            <button id="uploadBtn">Upload Document</button>
+            <button id="refreshBtn">Refresh Files</button>
+            <ul id="fileList" class="file-list"></ul>
+        </div>
+
+        <!-- Tax Calculator Section -->
+        <div class="section">
+            <h2>Tax Calculator</h2>
+            <input type="number" id="incomeInput" placeholder="Income">
+            <input type="number" id="allowancesInput" placeholder="Allowances">
+            <input type="number" id="expensesInput" placeholder="Expenses">
+            <button id="calculateBtn">Calculate Tax</button>
+            <div id="taxResults"></div>
+        </div>
+
+        <!-- AI Assistant Section -->
+        <div class="section">
+            <h2>AI Assistant</h2>
+            <div id="chatWindow" class="chat-window"></div>
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="chatInput" placeholder="Type your message...">
+                <button id="sendBtn">Send</button>
+            </div>
+        </div>
+
+        <!-- Tax Return Section -->
+        <div class="section">
+            <h2>Tax Return Viewer</h2>
+            <div id="taxViewer" style="height: 400px; overflow: auto;"></div>
+            <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+                <div>
+                    <button id="prevPage">Previous</button>
+                    <button id="nextPage">Next</button>
+                </div>
+                <button id="submitReturn">Submit Return</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Tax Calculator Section -->
-    <div class="section">
-      <h2>Tax Calculator</h2>
-      <p>Income: <span id="income">£0</span></p>
-      <p>Allowances: <span id="allowances">£0</span></p>
-      <p>Expenses: <span id="expenses">£0</span></p>
-      <p>Tax Liability: <span id="liability">£0</span></p>
-      <textarea placeholder="Edit your tax return here..."></textarea>
-      <button onclick="submitReturn()">Submit Return</button>
-    </div>
+    <script>
+        // Firebase initialization
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+            authDomain: "taxstats-document-ai.firebaseapp.com",
+            projectId: "taxstats-document-ai",
+            storageBucket: "taxstats-document-ai.firebasestorage.app",
+            messagingSenderId: "532562763606",
+            appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
+        };
 
-    <!-- AI Assistant Section -->
-    <div class="section">
-      <h2>AI Assistant</h2>
-      <div class="chat-box" id="chatBox">Welcome to TaxStats AI!</div>
-      <input type="text" id="chatInput" placeholder="Type your message...">
-      <button onclick="sendMessage()">Send</button>
-    </div>
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+        const storageRef = storage.ref();
 
-    <!-- Tax Return Viewer Section -->
-    <div class="section">
-      <h2>Tax Return Viewer</h2>
-      <div class="tax-return-viewer" id="taxViewer">No file loaded</div>
-      <div class="button-group">
-        <button onclick="previousPage()">Previous Page</button>
-        <button onclick="nextPage()">Next Page</button>
-      </div>
-    </div>
-  </div>
+        // Auth state listener
+        let authInitialized = false;
+        auth.onAuthStateChanged((user) => {
+            authInitialized = true;
+            if (!user) {
+                window.location.href = '/login.html';
+                return;
+            }
+            refreshFiles();
+        });
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+        // Status message function
+        function showStatus(message, type = 'success') {
+            const status = document.createElement('div');
+            status.className = `status-message ${type}`;
+            status.textContent = message;
+            document.body.appendChild(status);
+            setTimeout(() => status.remove(), 3000);
+        }
 
-  <script>
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
-      authDomain: "taxstats-document-ai.firebaseapp.com",
-      projectId: "taxstats-document-ai",
-      storageBucket: "taxstats-document-ai.appspot.com",
-      messagingSenderId: "532562763606",
-      appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
-    };
+        // File management functions
+        async function uploadDocument() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.pdf,.doc,.docx';
+            
+            fileInput.onchange = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
 
-    // Initialize Firebase
-    const firebaseApp = firebase.initializeApp(firebaseConfig);
+                try {
+                    const uploadRef = storageRef.child(`uploads/${file.name}`);
+                    await uploadRef.put(file);
+                    showStatus('File uploaded successfully');
+                    refreshFiles();
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    showStatus(error.message, 'error');
+                }
+            };
 
-    function uploadDocument() {
-      // Upload logic using Firebase Storage
-    }
+            fileInput.click();
+        }
 
-    function refreshDocuments() {
-      // Refresh logic for displaying documents
-    }
+        async function refreshFiles() {
+            const fileList = document.getElementById('fileList');
+            if (!fileList) return;
 
-    function sendMessage() {
-      // Logic to send a message to AI Assistant
-    }
+            try {
+                const uploadsList = await storageRef.child('uploads').listAll();
+                fileList.innerHTML = '';
 
-    function previousPage() {
-      // Logic to navigate to the previous page in the Tax Return Viewer
-    }
+                for (const item of uploadsList.items) {
+                    const url = await item.getDownloadURL();
+                    const li = document.createElement('li');
+                    li.className = 'file-item';
+                    li.innerHTML = `
+                        <span>${item.name}</span>
+                        <div>
+                            <a href="${url}" target="_blank">Download</a>
+                            <button onclick="deleteFile('${item.fullPath}')">Delete</button>
+                        </div>
+                    `;
+                    fileList.appendChild(li);
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+                showStatus(error.message, 'error');
+            }
+        }
 
-    function nextPage() {
-      // Logic to navigate to the next page in the Tax Return Viewer
-    }
+        async function deleteFile(filePath) {
+            try {
+                const fileRef = storageRef.child(filePath);
+                await fileRef.delete();
+                showStatus('File deleted successfully');
+                refreshFiles();
+            } catch (error) {
+                console.error('Delete error:', error);
+                showStatus(error.message, 'error');
+            }
+        }
 
-    function submitReturn() {
-      // Logic to handle Tax Return submission
-    }
+        // Chat functionality
+        async function handleChat() {
+            const chatInput = document.getElementById('chatInput');
+            const chatWindow = document.getElementById('chatWindow');
+            
+            if (!chatInput || !chatWindow) return;
+            
+            const message = chatInput.value.trim();
+            if (!message) return;
 
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        alert("Logged out!");
-        location.reload();
-      }).catch((error) => {
-        console.error("Error during logout:", error.message);
-      });
-    }
-  </script>
+            try {
+                const user = auth.currentUser;
+                if (!user) throw new Error('Please login first');
+
+                chatWindow.innerHTML += `<p><strong>You:</strong> ${message}</p>
+                <p id="loading"><em>AI is thinking...</em></p>`;
+                chatInput.value = '';
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                const idToken = await user.getIdToken(true);
+                const response = await fetch('https://taxstats-document-ai.web.app/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                document.getElementById('loading')?.remove();
+
+                if (!response.ok) throw new Error('Chat request failed');
+                
+                const { reply } = await response.json();
+                chatWindow.innerHTML += `<p><strong>AI:</strong> ${reply}</p>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                document.getElementById('loading')?.remove();
+                chatWindow.innerHTML += `<p style="color: var(--error);">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Tax calculator
+        function calculateTax() {
+            const income = parseFloat(document.getElementById('incomeInput').value) || 0;
+            const allowances = parseFloat(document.getElementById('allowancesInput').value) || 0;
+            const expenses = parseFloat(document.getElementById('expensesInput').value) || 0;
+
+            const taxableIncome = income - allowances - expenses;
+            const tax = Math.max(0, taxableIncome * 0.2); // Simple 20% tax rate
+
+            document.getElementById('taxResults').innerHTML = `
+                <p>Taxable Income: £${taxableIncome.toFixed(2)}</p>
+                <p>Estimated Tax: £${tax.toFixed(2)}</p>
+            `;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Upload and refresh
+            document.getElementById('uploadBtn')?.addEventListener('click', uploadDocument);
+            document.getElementById('refreshBtn')?.addEventListener('click', refreshFiles);
+
+            // Chat
+            document.getElementById('sendBtn')?.addEventListener('click', handleChat);
+            document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleChat();
+                }
+            });
+
+            // Tax calculator
+            document.getElementById('calculateBtn')?.addEventListener('click', calculateTax);
+
+            // Logout
+            document.getElementById('logoutBtn')?.addEventListener('click', () => {
+                auth.signOut().then(() => {
+                    window.location.href = '/login.html';
+                });
+            });
+        });
+    </script>
 </body>
 </html>
