@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaxStats AI Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #23358b;
+      color: #fafbfb;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background-color: #5e5286;
+      color: #fafbfb;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 24px;
+    }
+
+    header img {
+      height: 60px;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 10px;
+      flex-grow: 1;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .section {
+      background-color: #1e1e1e;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    h2 {
+      color: #a5adce;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      background-color: #f84723;
+      border: none;
+      color: #fafbfb;
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background-color: #e0361f;
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #333;
+      border-radius: 5px;
+      background-color: #262626;
+      color: #ffffff;
+    }
+
+    .file-list, .chat-box, .tax-return-viewer {
+      flex-grow: 1;
+      overflow-y: auto;
+      margin-top: 10px;
+      background: #222;
+      padding: 10px;
+      border-radius: 5px;
+      color: #ccc;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="TaxStats AI.png" alt="TaxStats AI Logo">
+    <span>TaxStats AI Dashboard</span>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <div class="container">
+    <!-- Document Management Section -->
+    <div class="section">
+      <h2>Document Management</h2>
+      <div class="button-group">
+        <button onclick="uploadDocument()">Upload Document</button>
+        <button onclick="refreshDocuments()">Refresh Files</button>
+      </div>
+      <div class="file-list" id="fileList">Your Documents: Loading...</div>
+    </div>
+
+    <!-- Tax Calculator Section -->
+    <div class="section">
+      <h2>Tax Calculator</h2>
+      <p>Income: <span id="income">£0</span></p>
+      <p>Allowances: <span id="allowances">£0</span></p>
+      <p>Expenses: <span id="expenses">£0</span></p>
+      <p>Tax Liability: <span id="liability">£0</span></p>
+      <textarea placeholder="Edit your tax return here..."></textarea>
+      <button onclick="submitReturn()">Submit Return</button>
+    </div>
+
+    <!-- AI Assistant Section -->
+    <div class="section">
+      <h2>AI Assistant</h2>
+      <div class="chat-box" id="chatBox">Welcome to TaxStats AI!</div>
+      <input type="text" id="chatInput" placeholder="Type your message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <!-- Tax Return Viewer Section -->
+    <div class="section">
+      <h2>Tax Return Viewer</h2>
+      <div class="tax-return-viewer" id="taxViewer">No file loaded</div>
+      <div class="button-group">
+        <button onclick="previousPage()">Previous Page</button>
+        <button onclick="nextPage()">Next Page</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+      authDomain: "taxstats-document-ai.firebaseapp.com",
+      projectId: "taxstats-document-ai",
+      storageBucket: "taxstats-document-ai.appspot.com",
+      messagingSenderId: "532562763606",
+      appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
+    };
+
+    // Initialize Firebase
+    const firebaseApp = firebase.initializeApp(firebaseConfig);
+
+    function uploadDocument() {
+      // Upload logic using Firebase Storage
+    }
+
+    function refreshDocuments() {
+      // Refresh logic for displaying documents
+    }
+
+    function sendMessage() {
+      // Logic to send a message to AI Assistant
+    }
+
+    function previousPage() {
+      // Logic to navigate to the previous page in the Tax Return Viewer
+    }
+
+    function nextPage() {
+      // Logic to navigate to the next page in the Tax Return Viewer
+    }
+
+    function submitReturn() {
+      // Logic to handle Tax Return submission
+    }
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        alert("Logged out!");
+        location.reload();
+      }).catch((error) => {
+        console.error("Error during logout:", error.message);
+      });
+    }
+  </script>
+</body>
+</html>

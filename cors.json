@@ -1,0 +1,8 @@
+[
+  {
+    "maxAgeSeconds": 3600,
+    "method": ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+    "origin": ["https://taxstats-document-ai.web.app"],
+    "responseHeader": ["Content-Type", "Authorization"]
+  }
+]

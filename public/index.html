@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard Layout</title>
+  <title>TaxStats AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <meta http-equiv="Refresh" content="0; url=login.html" />
   
   <!-- Inline CSS for your layout -->
   <style>
@@ -192,68 +193,6 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Authentication Section -->
-    <div id="authSection" class="section auth">
-      <div class="header">User Authentication</div>
-      <div class="content">
-        <input type="email" id="email" placeholder="Email" class="file-input">
-        <input type="password" id="password" placeholder="Password" class="file-input">
-        <div class="buttons-container">
-          <button id="signInBtn" class="button">Sign In</button>
-          <button id="signUpBtn" class="button">Sign Up</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sources Section -->
-    <div class="section sources">
-      <div class="header">Sources</div>
-      <div class="content">
-        <input type="file" id="fileInput" class="file-input">
-        <div class="buttons-container">
-          <button id="uploadBtn" class="button">Upload Document</button>
-          <button id="refreshFilesBtn" class="button">Refresh Files</button>
-        </div>
-        <!-- Documents List -->
-        <ul id="documentsList"></ul>
-      </div>
-    </div>
-
-    <!-- Chat Section -->
-    <div class="section chat">
-      <img src="TaxStats Logo.png" alt="TaxStats Logo" class="logo">
-      <div class="header">AI Assistant</div>
-      <div class="content">
-        <p>Welcome to TaxStats AI! Start by uploading a document or asking a question.</p>
-      </div>
-      <div class="chat-input">
-        <input type="text" id="userMessage" placeholder="Chat about your tax return...">
-        <button id="sendBtn" class="button">Send</button>
-      </div>
-    </div>
-
-    <!-- Tax Calculator Section -->
-    <div class="section tax-calculator">
-      <div class="header">Tax Calculator & Return Preview</div>
-      <div class="content">
-        <p>Estimated Tax Liability: £<span id="taxLiability">0</span></p>
-        <p>Income: £<span id="income">-</span></p>
-        <p>Allowances: £<span id="allowances">-</span></p>
-        <p>Expenses: £<span id="expenses">-</span></p>
-        <button id="refreshTaxBtn" class="button">Refresh Tax Calculation</button>
-        <textarea id="returnEditor" placeholder="Edit your tax return here..."></textarea>
-        <button id="submitReturnBtn" class="button">Submit Return</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Optional: Sign-Out Button -->
-  <!-- Uncomment and place appropriately if you have a sign-out button in your UI -->
-  <!-- <button id="signOutBtn" class="button">Sign Out</button> -->
-
-  <!-- Include ES modules at the end of the body -->
-  <script type="module" src="./firebaseConfig.js"></script>
-  <script type="module" src="./script.js"></script>
+  <p>If you are not redirected automatically, follow this <a href="login.html">link</a>.</p>
 </body>
 </html>

@@ -6,12 +6,12 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-s
 
 // Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "YAIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+  apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
   authDomain: "taxstats-document-ai.firebaseapp.com",
   projectId: "taxstats-document-ai",
-  storageBucket: "taxstats-document-ai.appspot.com",
+  storageBucket: "taxstats-document-ai.firebasestorage.app",
   messagingSenderId: "532562763606",
-  appId: "1:532562763606:web:3d9b6d04e4ed23700600f7",
+  appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
 };
 
 // Initialize the Firebase app

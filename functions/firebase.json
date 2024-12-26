@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "source": "functions",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local",
+      // Keep "key-file.json" out of deployment, but do not ignore secrets.js
+    ]
+  },
+  // ...any other config...
+}
