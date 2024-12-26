@@ -198,7 +198,8 @@
             appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
         };
 
-        firebase.initializeApp(firebaseConfig);
+        // Initialize Firebase and Auth
+        const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const storage = firebase.storage();
         const storageRef = storage.ref();
@@ -286,8 +287,13 @@
             }
         }
 
-        // Chat functionality
+        // Chat handler with auth
         async function handleChat() {
+            if (!authInitialized) {
+                console.error('Auth not initialized');
+                return;
+            }
+
             const chatInput = document.getElementById('chatInput');
             const chatWindow = document.getElementById('chatWindow');
             
@@ -297,17 +303,23 @@
             if (!message) return;
 
             try {
+                // Get fresh token
                 const user = auth.currentUser;
                 if (!user) throw new Error('Please login first');
+                
+                const idToken = await user.getIdToken(true);
 
-                chatWindow.innerHTML += `<p><strong>You:</strong> ${message}</p>
-                <p id="loading"><em>AI is thinking...</em></p>`;
+                // Show loading state
+                chatWindow.innerHTML += `
+                    <p><strong>You:</strong> ${message}</p>
+                    <p id="loading"><em>AI is thinking...</em></p>
+                `;
                 chatInput.value = '';
                 chatWindow.scrollTop = chatWindow.scrollHeight;
 
-                const idToken = await user.getIdToken(true);
-                const response = await fetch('https://taxstats-document-ai.web.app/api/chat', {
-                    method: 'POST',
+                // Make API call
+                const response = await fetch('/api/chat', {
+                    method: 'POST', 
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${idToken}`
@@ -315,18 +327,21 @@
                     body: JSON.stringify({ message })
                 });
 
+                // Remove loading
                 document.getElementById('loading')?.remove();
 
-                if (!response.ok) throw new Error('Chat request failed');
+                if (!response.ok) throw new Error(`Chat failed: ${response.statusText}`);
                 
-                const { reply } = await response.json();
-                chatWindow.innerHTML += `<p><strong>AI:</strong> ${reply}</p>`;
+                const data = await response.json();
+                chatWindow.innerHTML += `<p><strong>AI:</strong> ${data.reply}</p>`;
                 chatWindow.scrollTop = chatWindow.scrollHeight;
 
             } catch (error) {
                 console.error('Chat error:', error);
                 document.getElementById('loading')?.remove();
-                chatWindow.innerHTML += `<p style="color: var(--error);">Error: ${error.message}</p>`;
+                chatWindow.innerHTML += `
+                    <p style="color: var(--error);">Error: ${error.message}</p>
+                `;
             }
         }
 
@@ -352,13 +367,21 @@
             document.getElementById('refreshBtn')?.addEventListener('click', refreshFiles);
 
             // Chat
-            document.getElementById('sendBtn')?.addEventListener('click', handleChat);
-            document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleChat();
-                }
-            });
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+
+            if (sendBtn) {
+                sendBtn.addEventListener('click', handleChat);
+            }
+
+            if (chatInput) {
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleChat();
+                    }
+                });
+            }
 
             // Tax calculator
             document.getElementById('calculateBtn')?.addEventListener('click', calculateTax);
