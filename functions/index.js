@@ -9,320 +9,236 @@
 
 const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
-
-// Import required modules
-const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const { getSecretValue } = require("./secrets");
+const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+const { DocumentProcessorServiceClient } = require('@google-cloud/documentai').v1;
 const OpenAI = require("openai");
 const express = require("express");
 const cors = require("cors");
-const Busboy = require("busboy");
-const Joi = require("joi");
-const { DocumentProcessorServiceClient } = require('@google-cloud/documentai').v1;
-const path = require('path');
-const { Configuration, OpenAIApi } = require('openai');
-
-// Initialize Firebase Admin SDK with Default Credentials
-admin.initializeApp();
-const db = admin.firestore();
-const storage = admin.storage();
 
 // Initialize services
-const openai = new OpenAIApi(new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-}));
-const docaiClient = new DocumentProcessorServiceClient();
-
-// =====================================================
-// Add Custom Storage Bucket
-// =====================================================
-
-// Initialize a reference to the custom storage bucket
-const customBucket = admin.storage().bucket("gs://taxstats-document-ai.firebasestorage.app");
-const storageRef = customBucket;
-
-// =====================================================
-// Initialize Express app
-// =====================================================
-const app = express();
-
-const corsOptions = {
-  origin: 'https://taxstats-document-ai.web.app',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-app.use(cors(corsOptions));
-app.use(cors({ origin: true })); // Allow all origins for the emulator
-
-// Middleware to parse JSON bodies
-app.use(express.json());
-
-// =====================================================
-// Initialize OpenAI Client
-// =====================================================
-let openaiClient;
-
-/**
- * Initializes the OpenAI client using the API key from Secret Manager or Firebase Config.
- */
-const initializeOpenAI = async () => {
-  try {
-    const apiKey = await getSecretValue("openai_api_key");
-    openaiClient = new OpenAI({ apiKey });
-    console.log("OpenAI client initialized successfully");
-  } catch (error) {
-    console.error("Error initializing OpenAI client:", error);
-    throw error;
-  }
-};
-
-// =====================================================
-// Middleware to Authenticate Requests
-// =====================================================
-async function authenticateRequest(req, res, next) {
-  const authHeader = req.headers.authorization || "";
-  const match = authHeader.match(/^Bearer (.*)$/);
-  if (!match) {
-    console.error("Authentication failed: No token provided");
-    return res.status(401).json({ error: "No token provided." });
-  }
-
-  const idToken = match[1];
-
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    req.user = decodedToken;
-    next();
-  } catch (error) {
-    console.error("Authentication failed:", error);
-    return res.status(401).json({ error: "Invalid token." });
-  }
-}
-
-// Apply authentication middleware to all routes below
-app.use(authenticateRequest);
-
-// =====================================================
-// Define API Routes
-// =====================================================
-
-/**
- * Route: POST /chat
- * Description: Handles chat requests to communicate with the OpenAI API.
- */
-app.post("/chat", async (req, res) => {
-  const { message } = req.body;
-  if (!message) {
-    return res.status(400).json({ error: "Message is required" });
-  }
-
-  try {
-    const response = await openaiClient.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: message }]
-    });
-    res.json({ reply: response.choices[0].message.content });
-  } catch (error) {
-    logger.error("OpenAI API error:", error);
-    res.status(500).json({ error: "Failed to process request" });
-  }
-});
-
-/**
- * Route: POST /submitReturn
- * Description: Handles tax return submissions and saves them to Firestore.
- */
-app.post("/submitReturn", async (req, res) => {
-  const { returnData } = req.body;
-
-  if (!returnData) {
-    return res.status(400).json({ error: "Return data is required." });
-  }
-
-  try {
-    // Validate returnData using Joi or any other validation library if needed
-    const schema = Joi.object({
-      returnData: Joi.string().required(),
-    });
-
-    const { error } = schema.validate({ returnData });
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
-    }
-
-    // Process the returnData as needed
-    // For example, save to Firestore
-    const docRef = await db.collection("taxReturns").add({
-      returnData,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      userId: req.user.uid, // Assuming you pass user ID in headers via authentication
-    });
-    res.json({ message: "Return submitted successfully!", id: docRef.id });
-  } catch (error) {
-    console.error("Error submitting return:", error);
-    res.status(500).json({ error: "Failed to submit return." });
-  }
-});
-
-// =====================================================
-// Export the Express app as a Cloud Function
-// =====================================================
-exports.api = onRequest({
-  memory: "256MiB",
-  region: "us-central1",
-  maxInstances: 10
-}, async (req, res) => {
-  await initializeOpenAI();
-  return app(req, res);
-});
-
-// Process Document endpoint
-exports.processDocument = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError('unauthenticated');
-  
-  const processorName = 'projects/taxstats-document-ai/locations/eu/processors/YOUR_PROCESSOR_ID';
-  
-  try {
-    const [result] = await docaiClient.processDocument({
-      name: processorName,
-      document: {
-        content: data.content,
-        mimeType: data.mimeType
-      }
-    });
-    return result;
-  } catch (error) {
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Enhanced Chat endpoint
-exports.chat = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError('unauthenticated');
-  
-  try {
-    const completion = await openai.createChatCompletion({
-      model: 'gpt-4',
-      messages: data.messages
-    });
-    return completion.data;
-  } catch (error) {
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Initialize OpenAI with API Key
-async function initializeOpenAI() {
-  const openaiApiKey = await getSecretValue('OPENAI_API_KEY');
-  return new OpenAI({
-    apiKey: openaiApiKey
-  });
-}
-
-// Initialize Document AI
-const processorName = `projects/${process.env.PROJECT_ID}/locations/eu/processors/${process.env.PROCESSOR_ID}`;
-
-// Process Document Function
-exports.processDocument = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
-  }
-
-  try {
-    const [result] = await docaiClient.processDocument({
-      name: processorName,
-      rawDocument: {
-        content: data.content,
-        mimeType: data.mimeType
-      }
-    });
-    return { success: true, result: result.document };
-  } catch (error) {
-    logger.error('Document AI Error:', error);
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Chat Function with GPT-4
-exports.chat = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
-  }
-
-  try {
-    const openai = await initializeOpenAI();
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: data.messages,
-      temperature: 0.7
-    });
-    return { success: true, reply: completion.choices[0].message };
-  } catch (error) {
-    logger.error('OpenAI Error:', error);
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-// Initialize Document AI
-const docaiClient = new DocumentProcessorServiceClient();
-
-// API router setup
+admin.initializeApp();
 const app = express();
 app.use(cors({ origin: true }));
 
-// Chat endpoint
-app.post('/chat', async (req, res) => {
-  try {
-    const idToken = req.headers.authorization?.split('Bearer ')[1];
-    if (!idToken) throw new Error('Unauthorized');
-
-    await admin.auth().verifyIdToken(idToken);
-    const { message, history } = req.body;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a UK tax expert AI assistant." },
-        ...history || [],
-        { role: "user", content: message }
-      ]
-    });
-
-    res.json({ reply: completion.choices[0].message.content });
-  } catch (error) {
-    console.error('Chat error:', error);
-    res.status(401).json({ error: error.message });
-  }
+// Initialize clients
+const secrets = new SecretManagerServiceClient({
+    keyFilename: './key-file.json',
+    projectId: 'taxstats-document-ai'
 });
 
-// Document processing endpoint
-app.post('/processDocument', async (req, res) => {
-  try {
-    const idToken = req.headers.authorization?.split('Bearer ')[1];
-    if (!idToken) throw new Error('Unauthorized');
-
-    await admin.auth().verifyIdToken(idToken);
-    const { filename, path } = req.body;
-
-    const [result] = await docaiClient.processDocument({
-      name: process.env.PROCESSOR_NAME,
-      document: {
-        content: req.body.content,
-        mimeType: req.body.mimeType
-      }
-    });
-
-    res.json({ success: true, result: result.document });
-  } catch (error) {
-    console.error('Document processing error:', error);
-    res.status(401).json({ error: error.message });
-  }
+const docaiClient = new DocumentProcessorServiceClient({
+    keyFilename: './key-file.json'
 });
 
-exports.api = functions.https.onRequest(app);
+async function getSecret(name) {
+    try {
+        const [version] = await secrets.accessSecretVersion({
+            name: `projects/taxstats-document-ai/secrets/${name}/versions/latest`
+        });
+        return version.payload.data.toString();
+    } catch (error) {
+        logger.error(`Error fetching secret ${name}:`, error);
+        throw new Error('Configuration error');
+    }
+}
+
+// Initialize OpenAI
+let openaiClient = null;
+async function getOpenAIClient() {
+    if (!openaiClient) {
+        try {
+            const apiKey = await getSecretValue('OPENAI_API_KEY');
+            openaiClient = new OpenAI({ apiKey });
+        } catch (error) {
+            logger.error('OpenAI initialization error:', error);
+            throw new Error('Failed to initialize OpenAI client');
+        }
+    }
+    return openaiClient;
+}
+
+// Document AI setup
+const processorName = `projects/taxstats-document-ai/locations/eu/processors/${process.env.PROCESSOR_ID}`;
+
+// Enhanced auth middleware
+const authenticateRequest = async (req, res, next) => {
+    try {
+        // Log headers for debugging
+        logger.debug('Auth headers:', req.headers);
+        
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            logger.error('Missing/invalid auth header');
+            return res.status(401).json({
+                error: 'Unauthorized',
+                details: 'Missing or invalid authorization header'
+            });
+        }
+
+        const idToken = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        
+        if (!decodedToken.uid) {
+            logger.error('Invalid token - no UID');
+            return res.status(401).json({
+                error: 'Unauthorized',
+                details: 'Invalid token'
+            });
+        }
+
+        req.user = decodedToken;
+        next();
+    } catch (error) {
+        logger.error('Auth error:', error);
+        res.status(401).json({
+            error: 'Unauthorized',
+            message: error.message,
+            details: 'Authentication failed'
+        });
+    }
+};
+
+// File upload endpoint
+app.post('/upload', authenticateRequest, async (req, res) => {
+    try {
+        const { filename, contentType, data } = req.body;
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(`uploads/${req.user.uid}/${filename}`);
+        
+        await file.save(Buffer.from(data, 'base64'), {
+            contentType,
+            metadata: { uploadedBy: req.user.uid }
+        });
+
+        // Process with Document AI
+        const [result] = await docaiClient.processDocument({
+            name: processorName,
+            document: {
+                content: data,
+                mimeType: contentType
+            }
+        });
+
+        // Store processed results
+        await admin.firestore()
+            .collection('users')
+            .doc(req.user.uid)
+            .collection('documents')
+            .add({
+                filename,
+                processed: result.document,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+        res.json({ 
+            success: true, 
+            docId: result.document.name 
+        });
+    } catch (error) {
+        logger.error('Upload error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Enhanced chat endpoint with document context
+app.post('/chat', authenticateRequest, async (req, res) => {
+    try {
+        const openai = await getOpenAIClient();
+        const { message, history } = req.body;
+
+        // Get user's processed documents
+        const docs = await admin.firestore()
+            .collection('users')
+            .doc(req.user.uid)
+            .collection('documents')
+            .orderBy('timestamp', 'desc')
+            .limit(5)
+            .get();
+
+        const docContext = docs.docs
+            .map(doc => doc.data().processed)
+            .join('\n\n');
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+                {
+                    role: "system",
+                    content: `You are a UK tax expert AI assistant. Use this document context: ${docContext}`
+                },
+                ...history || [],
+                { role: "user", content: message }
+            ]
+        });
+
+        res.json({
+            success: true,
+            reply: completion.choices[0].message.content,
+            context: completion.choices[0].message
+        });
+    } catch (error) {
+        logger.error('Chat error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Add document processing endpoint
+app.post('/processDocument', authenticateRequest, async (req, res) => {
+    try {
+        const { content, mimeType } = req.body;
+        
+        const [result] = await docaiClient.processDocument({
+            name: processorName,
+            document: {
+                content,
+                mimeType
+            }
+        });
+
+        // Store results in Firestore
+        await admin.firestore()
+            .collection('users')
+            .doc(req.user.uid)
+            .collection('documents')
+            .add({
+                processed: result.document,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+        res.json({ success: true, result: result.document });
+    } catch (error) {
+        logger.error('Document processing error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// New document processing endpoint
+app.post('/process-documents', authenticateRequest, async (req, res) => {
+    try {
+        const { files } = req;
+        const processor = new DocumentProcessor(process.env.PROCESSOR_ID);
+        const formGenerator = new FormGenerator('2023-24');
+        
+        for (const file of files) {
+            const processedDoc = await processor.processDocument(file);
+            await formGenerator.mapToForms(processedDoc);
+        }
+
+        const reviewer = new FormReview(formGenerator);
+        const preview = reviewer.generatePreview();
+
+        res.json({ success: true, preview });
+    } catch (error) {
+        console.error('Processing error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Export the Express app as a v2 function
+exports.api = onRequest({
+    region: "europe-west2",
+    memory: "256MiB",
+    maxInstances: 10,
+    secrets: ["OPENAI_API_KEY", "PROCESSOR_ID"]
+}, app);

@@ -39,16 +39,7 @@ jest.mock('firebase-admin', () => ({
     collection: jest.fn().mockReturnThis(),
     add: jest.fn()
   }),
-  storage: () => ({
-    bucket: jest.fn().mockReturnValue({
-      file: jest.fn().mockReturnThis(),
-      upload: jest.fn().mockResolvedValue([{}])
-    })
-  }),
-  initializeApp: jest.fn(),
-  FieldValue: {
-    serverTimestamp: jest.fn()
-  }
+  initializeApp: jest.fn()
 }));
 
 // Import dependencies after mocks
@@ -56,7 +47,6 @@ const Busboy = require('busboy');
 const Joi = require('joi');
 const { OpenAI } = require('openai');
 const admin = require('firebase-admin');
-const { api } = require('../index');
 
 describe('API Endpoints', () => {
   beforeEach(() => {
@@ -75,7 +65,10 @@ describe('API Endpoints', () => {
       json: jest.fn()
     };
 
+    // Import the api function after mocks are set up
+    const { api } = require('../index');
     await api(req, res);
+
     expect(mockCreate).toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({

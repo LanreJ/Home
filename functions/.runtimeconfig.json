@@ -1,0 +1,22 @@
+{
+  "docai": {
+    "project_id": "YOUR_PROJECT_ID",
+    "location": "us-central1",
+    "processor_id": "937da5fa78490a0b",
+    "summary_processor": "77ce6094559bfb6e"
+  },
+  "openai": {
+    "apikey": "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",
+    "api_key": "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",
+    "key": "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"
+  },
+  "gcs": {
+    "output": "taxstats-document-ai-doc-ai-form-output"
+  },
+  "project": {
+    "id": "taxstats-document-ai"
+  },
+  "bq": {
+    "table_id": "taxstats-document-ai.document_ai.form_parser"
+  }
+}

@@ -1,44 +1,42 @@
 {
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "/api/**",
-        "function": "api"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
-  "functions": {
-    "source": "functions",
-    "region": "europe-west2",
-    "runtime": "nodejs18",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log"
-    ]
-  },
-  "emulators": {
-    "functions": {
-      "port": 5001
-    },
     "hosting": {
-      "port": 5000
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/api/**",
+          "function": "api"
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
     },
-    "ui": {
-      "enabled": true
+    "functions": {
+      "source": "functions",
+      "region": "europe-west2",
+      "runtime": "nodejs18",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    },
+    "emulators": {
+      "functions": {
+        "port": 5001
+      },
+      "hosting": {
+        "port": 5000
+      },
+      "ui": {
+        "enabled": true
+      }
     }
   }
-}
-
-
