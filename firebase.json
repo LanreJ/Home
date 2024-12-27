@@ -9,30 +9,31 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "function": "api"
+        "function": "api" // Make sure you have a function named "api" deployed.
       },
       {
         "source": "**",
-        "destination": "/dashboard.html"
+        "destination": "/dashboard.html" // Ensure dashboard.html exists in your public directory.
       }
     ]
   },
   "functions": {
     "source": "functions",
-    "codebase": "default",
     "ignore": [
       "node_modules",
       ".git",
       "firebase-debug.log",
       "firebase-debug.*.log",
-      "*.local"
+      "*.local",
+      "**/.*", // Add this to ignore hidden files within the functions directory. Potentially secrets files if you are not using secrets manager
+      "key-file.json" // Explicitly ignore service account credentials if present, use secrets manager.
     ]
   },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "storage.rules" // Make sure you have a storage.rules file configured.
   },
   "firestore": {
-    "rules": "firestore.rules",
+    "rules": "firestore.rules", // Ensure firestore.rules file exists.
     "indexes": "firestore.indexes.json"
   },
   "emulators": {
@@ -53,3 +54,5 @@
     }
   }
 }
+
+

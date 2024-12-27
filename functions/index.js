@@ -19,11 +19,20 @@ const express = require("express");
 const cors = require("cors");
 const Busboy = require("busboy");
 const Joi = require("joi");
+const { DocumentProcessorServiceClient } = require('@google-cloud/documentai').v1;
+const path = require('path');
+const { Configuration, OpenAIApi } = require('openai');
 
 // Initialize Firebase Admin SDK with Default Credentials
 admin.initializeApp();
 const db = admin.firestore();
 const storage = admin.storage();
+
+// Initialize services
+const openai = new OpenAIApi(new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+}));
+const docaiClient = new DocumentProcessorServiceClient();
 
 // =====================================================
 // Add Custom Storage Bucket
@@ -52,7 +61,7 @@ app.use(express.json());
 // =====================================================
 // Initialize OpenAI Client
 // =====================================================
-let openai;
+let openaiClient;
 
 /**
  * Initializes the OpenAI client using the API key from Secret Manager or Firebase Config.
@@ -60,7 +69,7 @@ let openai;
 const initializeOpenAI = async () => {
   try {
     const apiKey = await getSecretValue("openai_api_key");
-    openai = new OpenAI({ apiKey });
+    openaiClient = new OpenAI({ apiKey });
     console.log("OpenAI client initialized successfully");
   } catch (error) {
     console.error("Error initializing OpenAI client:", error);
@@ -109,7 +118,7 @@ app.post("/chat", async (req, res) => {
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: message }]
     });
@@ -166,4 +175,91 @@ exports.api = onRequest({
 }, async (req, res) => {
   await initializeOpenAI();
   return app(req, res);
+});
+
+// Process Document endpoint
+exports.processDocument = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated');
+  
+  const processorName = 'projects/taxstats-document-ai/locations/eu/processors/YOUR_PROCESSOR_ID';
+  
+  try {
+    const [result] = await docaiClient.processDocument({
+      name: processorName,
+      document: {
+        content: data.content,
+        mimeType: data.mimeType
+      }
+    });
+    return result;
+  } catch (error) {
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+// Enhanced Chat endpoint
+exports.chat = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated');
+  
+  try {
+    const completion = await openai.createChatCompletion({
+      model: 'gpt-4',
+      messages: data.messages
+    });
+    return completion.data;
+  } catch (error) {
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+// Initialize OpenAI with API Key
+async function initializeOpenAI() {
+  const openaiApiKey = await getSecretValue('OPENAI_API_KEY');
+  return new OpenAI({
+    apiKey: openaiApiKey
+  });
+}
+
+// Initialize Document AI
+const processorName = `projects/${process.env.PROJECT_ID}/locations/eu/processors/${process.env.PROCESSOR_ID}`;
+
+// Process Document Function
+exports.processDocument = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
+  }
+
+  try {
+    const [result] = await docaiClient.processDocument({
+      name: processorName,
+      rawDocument: {
+        content: data.content,
+        mimeType: data.mimeType
+      }
+    });
+    return { success: true, result: result.document };
+  } catch (error) {
+    logger.error('Document AI Error:', error);
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+// Chat Function with GPT-4
+exports.chat = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
+  }
+
+  try {
+    const openai = await initializeOpenAI();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: data.messages,
+      temperature: 0.7
+    });
+    return { success: true, reply: completion.choices[0].message };
+  } catch (error) {
+    logger.error('OpenAI Error:', error);
+    throw new functions.https.HttpsError('internal', error.message);
+  }
 });

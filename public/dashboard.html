@@ -224,20 +224,37 @@
             setTimeout(() => status.remove(), 3000);
         }
 
-        // File management functions
+        // File type validation
+        const ALLOWED_TYPES = ['.pdf', '.jpg', '.jpeg', '.png'];
+
         async function uploadDocument() {
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
-            fileInput.accept = '.pdf,.doc,.docx';
+            fileInput.accept = ALLOWED_TYPES.join(',');
             
             fileInput.onchange = async (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
 
+                // Validate file type
+                const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+                if (!ALLOWED_TYPES.includes(fileExt)) {
+                    showStatus('Invalid file type. Allowed: PDF, JPG, PNG', 'error');
+                    return;
+                }
+
                 try {
-                    const uploadRef = storageRef.child(`uploads/${file.name}`);
+                    const uploadRef = storageRef.child(`uploads/${auth.currentUser.uid}/${file.name}`);
                     await uploadRef.put(file);
-                    showStatus('File uploaded successfully');
+                    
+                    // Process document
+                    const processDocument = firebase.functions().httpsCallable('processDocument');
+                    await processDocument({ 
+                        filename: file.name,
+                        path: uploadRef.fullPath
+                    });
+                    
+                    showStatus('File uploaded and processed successfully');
                     refreshFiles();
                 } catch (error) {
                     console.error('Upload error:', error);
@@ -288,6 +305,8 @@
         }
 
         // Chat handler with auth
+        let chatHistory = [];
+
         async function handleChat() {
             if (!authInitialized) {
                 console.error('Auth not initialized');
@@ -324,7 +343,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${idToken}`
                     },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({ message, history: chatHistory })
                 });
 
                 // Remove loading
@@ -333,6 +352,8 @@
                 if (!response.ok) throw new Error(`Chat failed: ${response.statusText}`);
                 
                 const data = await response.json();
+                chatHistory.push({ role: "user", content: message });
+                chatHistory.push(data.context);
                 chatWindow.innerHTML += `<p><strong>AI:</strong> ${data.reply}</p>`;
                 chatWindow.scrollTop = chatWindow.scrollHeight;
 

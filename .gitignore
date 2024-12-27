@@ -32,6 +32,7 @@ coverage/
 secrets.js
 key-file.json
 openai_key.txt
+Docaieditor.json
 
 # ------------------------------
 # Build Directories
