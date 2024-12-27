@@ -9,48 +9,34 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "function": "api" // Make sure you have a function named "api" deployed.
+        "function": "api"
       },
       {
         "source": "**",
-        "destination": "/dashboard.html" // Ensure dashboard.html exists in your public directory.
+        "destination": "/index.html"
       }
     ]
   },
   "functions": {
     "source": "functions",
+    "region": "europe-west2",
+    "runtime": "nodejs18",
     "ignore": [
       "node_modules",
       ".git",
       "firebase-debug.log",
-      "firebase-debug.*.log",
-      "*.local",
-      "**/.*", // Add this to ignore hidden files within the functions directory. Potentially secrets files if you are not using secrets manager
-      "key-file.json" // Explicitly ignore service account credentials if present, use secrets manager.
+      "firebase-debug.*.log"
     ]
-  },
-  "storage": {
-    "rules": "storage.rules" // Make sure you have a storage.rules file configured.
-  },
-  "firestore": {
-    "rules": "firestore.rules", // Ensure firestore.rules file exists.
-    "indexes": "firestore.indexes.json"
   },
   "emulators": {
     "functions": {
       "port": 5001
     },
-    "firestore": {
-      "port": 8080
-    },
-    "auth": {
-      "port": 9099
-    },
     "hosting": {
       "port": 5000
     },
-    "storage": {
-      "port": 9199
+    "ui": {
+      "enabled": true
     }
   }
 }

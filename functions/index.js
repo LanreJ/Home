@@ -263,3 +263,66 @@ exports.chat = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', error.message);
   }
 });
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Initialize Document AI
+const docaiClient = new DocumentProcessorServiceClient();
+
+// API router setup
+const app = express();
+app.use(cors({ origin: true }));
+
+// Chat endpoint
+app.post('/chat', async (req, res) => {
+  try {
+    const idToken = req.headers.authorization?.split('Bearer ')[1];
+    if (!idToken) throw new Error('Unauthorized');
+
+    await admin.auth().verifyIdToken(idToken);
+    const { message, history } = req.body;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a UK tax expert AI assistant." },
+        ...history || [],
+        { role: "user", content: message }
+      ]
+    });
+
+    res.json({ reply: completion.choices[0].message.content });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(401).json({ error: error.message });
+  }
+});
+
+// Document processing endpoint
+app.post('/processDocument', async (req, res) => {
+  try {
+    const idToken = req.headers.authorization?.split('Bearer ')[1];
+    if (!idToken) throw new Error('Unauthorized');
+
+    await admin.auth().verifyIdToken(idToken);
+    const { filename, path } = req.body;
+
+    const [result] = await docaiClient.processDocument({
+      name: process.env.PROCESSOR_NAME,
+      document: {
+        content: req.body.content,
+        mimeType: req.body.mimeType
+      }
+    });
+
+    res.json({ success: true, result: result.document });
+  } catch (error) {
+    console.error('Document processing error:', error);
+    res.status(401).json({ error: error.message });
+  }
+});
+
+exports.api = functions.https.onRequest(app);
