@@ -1,4 +1,5 @@
 import { admin } from '../../config/firebase';
+import { HMRCClient } from '../hmrc/HMRCClient';
 
 class TaxSummaryGenerator {
     constructor(taxYear) {
@@ -24,23 +25,43 @@ class TaxSummaryGenerator {
 
     async generateTaxSummary(forms) {
         try {
-            const income = this.calculateTotalIncome(forms);
-            const deductions = this.calculateDeductions(forms);
+            if (!forms.SA100) {
+                throw new Error('SA100 form is required');
+            }
+
+            const formData = this.processFormData(forms);
+            const income = this.calculateTotalIncome(formData.income);
+            const deductions = this.calculateDeductions(formData);
             const taxBands = this.calculateTaxBands(income.taxable);
             const ni = this.calculateNI(income);
 
-            const summary = await this.generateFinalSummary(income, deductions, taxBands, ni);
-            const validation = await this.validateTaxReturn(summary);
-            const stored = await this.storeTaxReturn(summary);
-
-            return {
-                returnId: stored.id,
-                summary,
-                validation,
-                status: stored.status
+            const summary = {
+                personalDetails: formData.personalDetails,
+                income,
+                deductions,
+                tax: {
+                    bands: taxBands,
+                    ni,
+                    total: Object.values(taxBands).reduce((a, b) => a + b, 0) + ni.amount,
+                    effectiveRate: this.calculateEffectiveRate(income.total)
+                },
+                hmrcSubmission: formData.hmrcSubmission,
+                metadata: {
+                    ...formData.metadata,
+                    generated: admin.firestore.FieldValue.serverTimestamp(),
+                    status: 'DRAFT'
+                }
             };
+
+            const validation = await this.validateTaxReturn(summary);
+            if (!validation.isValid) {
+                throw new Error(`Tax return validation failed: ${validation.errors.join(', ')}`);
+            }
+
+            const stored = await this.storeTaxReturn(summary);
+            return { returnId: stored.id, summary, validation };
         } catch (error) {
-            throw new Error(`Tax summary generation failed: ${error.message}`);
+            throw new Error(`Failed to generate tax summary: ${error.message}`);
         }
     }
 
@@ -57,14 +78,26 @@ class TaxSummaryGenerator {
     }
 
     processFormData(forms) {
+        if (!forms.SA100) {
+            throw new Error('SA100 form is required');
+        }
+
         return {
             personalDetails: this.extractPersonalDetails(forms.SA100),
             income: this.processIncomeSources(forms),
             allowances: this.calculateAllowances(forms),
+            hmrcSubmission: {
+                utr: forms.SA100.entities.personalDetails.utr,
+                nino: forms.SA100.entities.personalDetails.nino,
+                taxYear: this.taxYear,
+                clientId: process.env.HMRC_CLIENT_ID,
+                applicationId: process.env.HMRC_APPLICATION_ID
+            },
             metadata: {
                 formTypes: Object.keys(forms),
                 processed: new Date().toISOString(),
-                taxYear: this.taxYear
+                processingEnvironment: 'TEST',
+                version: '1.0'
             }
         };
     }
@@ -78,7 +111,9 @@ class TaxSummaryGenerator {
             name: sa100.entities.personalDetails.name,
             utr: sa100.entities.personalDetails.utr,
             nino: sa100.entities.personalDetails.nino,
-            address: sa100.entities.personalDetails.address
+            address: sa100.entities.personalDetails.address,
+            phoneNumber: sa100.entities.personalDetails.phoneNumber,
+            email: sa100.entities.personalDetails.email
         };
     }
 
@@ -100,6 +135,54 @@ class TaxSummaryGenerator {
             property: this.calculatePropertyAllowance(forms.SA105),
             total: this.sumAllowances(forms)
         };
+    }
+
+    async submitToHMRC(summary) {
+        const hmrcClient = new HMRCClient({
+            clientId: process.env.HMRC_CLIENT_ID,
+            clientSecret: process.env.HMRC_CLIENT_SECRET,
+            applicationId: process.env.HMRC_APPLICATION_ID
+        });
+
+        try {
+            const response = await hmrcClient.submitTaxReturn(summary);
+            await this.updateSubmissionStatus(summary.id, response.data);
+            return response.data;
+        } catch (error) {
+            throw new Error(`HMRC submission failed: ${error.message}`);
+        }
+    }
+
+    async processAndSubmit(forms) {
+        try {
+            const summary = await this.generateTaxSummary(forms);
+            const hmrcResponse = await this.submitToHMRC(summary);
+            
+            await this.updateSubmissionStatus(summary.returnId, {
+                hmrcSubmissionId: hmrcResponse.submissionId,
+                submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+                status: 'SUBMITTED'
+            });
+
+            return {
+                returnId: summary.returnId,
+                hmrcSubmissionId: hmrcResponse.submissionId,
+                status: 'SUBMITTED',
+                summary
+            };
+        } catch (error) {
+            throw new Error(`Tax return processing failed: ${error.message}`);
+        }
+    }
+
+    async updateSubmissionStatus(returnId, update) {
+        return admin.firestore()
+            .collection('tax_returns')
+            .doc(returnId)
+            .update({
+                ...update,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+            });
     }
 }
 
