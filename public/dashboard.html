@@ -135,6 +135,84 @@
             70% { opacity: 1; }
             100% { opacity: 0; visibility: hidden; }
         }
+
+        .chat-container {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding: 1rem;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--text-secondary);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .chat-input button {
+            padding: 0.5rem 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .chat-input button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+
+        .user-message {
+            background: var(--accent);
+            color: white;
+            margin-left: 20%;
+        }
+
+        .bot-message {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin-right: 20%;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--text-secondary);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -308,61 +386,40 @@
         let chatHistory = [];
 
         async function handleChat() {
-            if (!authInitialized) {
-                console.error('Auth not initialized');
-                return;
-            }
-
-            const chatInput = document.getElementById('chatInput');
-            const chatWindow = document.getElementById('chatWindow');
-            
-            if (!chatInput || !chatWindow) return;
-            
-            const message = chatInput.value.trim();
-            if (!message) return;
-
             try {
-                // Get fresh token
+                const message = chatInput.value.trim();
+                if (!message) return;
+
                 const user = auth.currentUser;
-                if (!user) throw new Error('Please login first');
+                if (!user) {
+                    throw new Error('Not authenticated');
+                }
+
+                const token = await user.getIdToken();
+                chatBtn.disabled = true;
                 
-                const idToken = await user.getIdToken(true);
-
-                // Show loading state
-                chatWindow.innerHTML += `
-                    <p><strong>You:</strong> ${message}</p>
-                    <p id="loading"><em>AI is thinking...</em></p>
-                `;
-                chatInput.value = '';
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-
-                // Make API call
                 const response = await fetch('/api/chat', {
-                    method: 'POST', 
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${idToken}`
+                        'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ message, history: chatHistory })
+                    body: JSON.stringify({ message })
                 });
 
-                // Remove loading
-                document.getElementById('loading')?.remove();
-
-                if (!response.ok) throw new Error(`Chat failed: ${response.statusText}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
                 const data = await response.json();
-                chatHistory.push({ role: "user", content: message });
-                chatHistory.push(data.context);
-                chatWindow.innerHTML += `<p><strong>AI:</strong> ${data.reply}</p>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-
+                displayChatMessage(message, data.response);
+                chatInput.value = '';
+                
             } catch (error) {
                 console.error('Chat error:', error);
-                document.getElementById('loading')?.remove();
-                chatWindow.innerHTML += `
-                    <p style="color: var(--error);">Error: ${error.message}</p>
-                `;
+                displayError('Failed to send message. Please try again.');
+            } finally {
+                chatBtn.disabled = false;
             }
         }
 
@@ -413,7 +470,74 @@
                     window.location.href = '/login.html';
                 });
             });
+
+            // Chat functionality
+            const chatInput = document.getElementById('chatInput');
+            const chatBtn = document.getElementById('sendChatBtn');
+            const chatHistory = document.getElementById('chatHistory');
+
+            async function handleChat() {
+                const now = Date.now();
+                if (now - lastMessageTime < RATE_LIMIT) {
+                    displayError('Please wait before sending another message');
+                    return;
+                }
+                lastMessageTime = now;
+
+                try {
+                    const message = chatInput.value.trim();
+                    if (!message) return;
+
+                    const user = auth.currentUser;
+                    if (!user) throw new Error('Not authenticated');
+
+                    const token = await user.getIdToken();
+                    
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ message })
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                    const data = await response.json();
+                    displayChatMessage(message, data.response);
+                    chatInput.value = '';
+                    
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    displayError('Failed to send message. Please try again.');
+                }
+            }
+
+            chatBtn?.addEventListener('click', handleChat);
+            chatInput?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleChat();
+            });
         });
+
+        function displayChatMessage(message, response) {
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = `
+                <p class="user-message">${message}</p>
+                <p class="bot-message">${response}</p>
+            `;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function displayError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
     </script>
     <script type="module">
         import { initializeApp } from 'firebase/app';
@@ -448,6 +572,42 @@
                 // Schedule next refresh
                 tokenRefreshTimeout = setTimeout(refreshToken, 30 * 60 * 1000); // 30 mins
             }
+        }
+
+        // Add token refresh mechanism
+        let tokenRefreshInterval;
+        
+        function startTokenRefresh() {
+            tokenRefreshInterval = setInterval(async () => {
+                const user = auth.currentUser;
+                if (user) {
+                    try {
+                        await user.getIdToken(true);
+                    } catch (error) {
+                        console.error('Token refresh failed:', error);
+                        displayError('Session refresh failed');
+                    }
+                }
+            }, 30 * 60 * 1000); // 30 minutes
+        }
+
+        function stopTokenRefresh() {
+            clearInterval(tokenRefreshInterval);
+        }
+
+        // Add rate limiting for chat
+        const RATE_LIMIT = 1000; // 1 second between messages
+        let lastMessageTime = 0;
+
+        async function handleChat() {
+            const now = Date.now();
+            if (now - lastMessageTime < RATE_LIMIT) {
+                displayError('Please wait before sending another message');
+                return;
+            }
+            lastMessageTime = now;
+
+            ...existing code...
         }
 
         window.handleChat = handleChat;
