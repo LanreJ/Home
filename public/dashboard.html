@@ -1,618 +1,875 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaxStats AI Dashboard</title>
-    
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-storage-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TaxStats AI Dashboard</title>
 
-    <style>
-        :root[data-theme="dark"] {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --text-primary: #ffffff;
-            --text-secondary: #b3b3b3;
-            --accent: #23358b;
-            --error: #ff4444;
-            --success: #00C851;
-        }
+  <!-- PDF.js (if you need PDF rendering) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-        }
+  <style>
+    :root[data-theme="dark"] {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2d2d2d;
+      --text-primary: #ffffff;
+      --text-secondary: #b3b3b3;
+      --accent: #23358b;
+      --error: #ff4444;
+      --success: #00C851;
+    }
 
-        header {
-            background-color: var(--bg-secondary);
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
 
-        header img {
-            width: 200px;  /* Increased from 80px */
-            height: 200px; /* Increased from 80px */
-            object-fit: contain;
-            margin-right: 20px;
-        }
+    header {
+      background-color: var(--bg-secondary);
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            grid-gap: 1rem;
-            padding: 1rem;
-        }
+    header img {
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
+      margin-right: 20px;
+    }
 
-        .section {
-            background-color: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+    .container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-gap: 1rem;
+      padding: 1rem;
+    }
 
-        button {
-            background-color: var(--accent);
-            color: var(--text-primary);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
+    .section {
+      background-color: var(--bg-secondary);
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
 
-        button:hover {
-            opacity: 0.9;
-        }
+    button {
+      background-color: var(--accent);
+      color: var(--text-primary);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
 
-        input, textarea {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            border: 1px solid var(--text-secondary);
-            padding: 0.5rem;
-            border-radius: 4px;
-            width: 100%;
-            margin-bottom: 1rem;
-        }
+    button:hover {
+      opacity: 0.9;
+    }
 
-        .file-list {
-            list-style: none;
-            padding: 0;
-        }
+    input, textarea {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--text-secondary);
+      padding: 0.5rem;
+      border-radius: 4px;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
 
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid var(--text-secondary);
-        }
+    .file-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
-        .file-item:last-child {
-            border-bottom: none;
-        }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--text-secondary);
+    }
 
-        .file-item a {
-            color: #ffffff;
-            text-decoration: none;
-            padding: 5px 10px;
-            background-color: var(--accent);
-            border-radius: 4px;
-            margin-right: 10px;
-        }
+    .file-item:last-child {
+      border-bottom: none;
+    }
 
-        .file-item a:hover {
-            opacity: 0.9;
-        }
+    .file-item a {
+      color: #ffffff;
+      text-decoration: none;
+      padding: 5px 10px;
+      background-color: var(--accent);
+      border-radius: 4px;
+      margin-right: 10px;
+    }
 
-        .chat-window {
-            height: 300px;
-            overflow-y: auto;
-            padding: 1rem;
-            background-color: var(--bg-primary);
-            border-radius: 4px;
-            margin-bottom: 1rem;
-        }
+    .file-item a:hover {
+      opacity: 0.9;
+    }
 
-        .status-message {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            padding: 1rem;
-            border-radius: 4px;
-            animation: fadeOut 3s forwards;
-        }
+    /* Status message (upload/delete success/fail) */
+    .status-message {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 1rem;
+      border-radius: 4px;
+      animation: fadeOut 3s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      70% { opacity: 1; }
+      100% { opacity: 0; visibility: hidden; }
+    }
 
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            70% { opacity: 1; }
-            100% { opacity: 0; visibility: hidden; }
-        }
+    /* Chat styles */
+    .chat-history {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background-color: var(--bg-primary);
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
 
-        .chat-container {
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 1rem;
-            margin: 1rem;
-            height: 500px;
-            display: flex;
-            flex-direction: column;
-        }
+    .chat-input-container {
+      display: flex;
+      gap: 0.5rem;
+    }
 
-        .chat-history {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 1rem;
-            padding: 1rem;
-        }
+    .loading-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
 
-        .chat-input {
-            display: flex;
-            gap: 0.5rem;
-        }
+    .message {
+      max-width: 80%;
+      padding: 0.8rem;
+      border-radius: 8px;
+      word-wrap: break-word;
+    }
 
-        .chat-input input {
-            flex-grow: 1;
-            padding: 0.5rem;
-            border: 1px solid var(--text-secondary);
-            border-radius: 4px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-        }
+    .user-message {
+      align-self: flex-end;
+      background: var(--accent);
+      color: white;
+    }
 
-        .chat-input button {
-            padding: 0.5rem 1rem;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    .bot-message {
+      align-self: flex-start;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
 
-        .chat-input button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+    .message-time {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
 
-        .message {
-            margin: 0.5rem 0;
-            padding: 0.5rem;
-            border-radius: 4px;
-        }
+    /* Error message in chat */
+    .error-message {
+      display: none;
+      color: var(--error);
+      margin-top: 0.5rem;
+    }
 
-        .user-message {
-            background: var(--accent);
-            color: white;
-            margin-left: 20%;
-        }
+    /* Tax Viewer style (placeholder) */
+    #taxViewer {
+      height: 400px;
+      overflow: auto;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--text-secondary);
+      border-radius: 4px;
+      padding: 0.5rem;
+    }
 
-        .bot-message {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            margin-right: 20%;
-        }
-
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--text-secondary);
-            border-top: 2px solid var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    /* Smaller screen adjustments */
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <img src="TaxStats AI.png" alt="TaxStats AI Logo" width="80" height="80">
-        <h1>TaxStats AI Dashboard</h1>
-        <button id="logoutBtn">Logout</button>
-    </header>
+  <header>
+    <div style="display: flex; align-items: center;">
+      <img src="TaxStats AI.png" alt="TaxStats AI Logo" />
+      <h1>TaxStats AI Dashboard</h1>
+    </div>
+    <button id="logoutBtn">Logout</button>
+  </header>
 
-    <div class="container">
-        <!-- Sources Section -->
-        <div class="section">
-            <h2>Sources</h2>
-            <button id="uploadBtn">Upload Document</button>
-            <button id="refreshBtn">Refresh Files</button>
-            <ul id="fileList" class="file-list"></ul>
-        </div>
-
-        <!-- Tax Calculator Section -->
-        <div class="section">
-            <h2>Tax Calculator</h2>
-            <input type="number" id="incomeInput" placeholder="Income">
-            <input type="number" id="allowancesInput" placeholder="Allowances">
-            <input type="number" id="expensesInput" placeholder="Expenses">
-            <button id="calculateBtn">Calculate Tax</button>
-            <div id="taxResults"></div>
-        </div>
-
-        <!-- AI Assistant Section -->
-        <div class="section">
-            <h2>AI Assistant</h2>
-            <div id="chatWindow" class="chat-window"></div>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="chatInput" placeholder="Type your message...">
-                <button id="sendBtn">Send</button>
-            </div>
-        </div>
-
-        <!-- Tax Return Section -->
-        <div class="section">
-            <h2>Tax Return Viewer</h2>
-            <div id="taxViewer" style="height: 400px; overflow: auto;"></div>
-            <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
-                <div>
-                    <button id="prevPage">Previous</button>
-                    <button id="nextPage">Next</button>
-                </div>
-                <button id="submitReturn">Submit Return</button>
-            </div>
-        </div>
+  <main class="container">
+    <!-- 1) Sources Section -->
+    <div class="section">
+      <h2>Sources</h2>
+      <button id="uploadBtn">Upload Document</button>
+      <button id="refreshBtn">Refresh Files</button>
+      <ul id="fileList" class="file-list"></ul>
     </div>
 
-    <script>
-        // Firebase initialization
-        const firebaseConfig = {
-            apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
-            authDomain: "taxstats-document-ai.firebaseapp.com",
-            projectId: "taxstats-document-ai",
-            storageBucket: "taxstats-document-ai.firebasestorage.app",
-            messagingSenderId: "532562763606",
-            appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
-        };
+    <!-- 2) Tax Calculator Section -->
+    <div class="section">
+      <h2>Tax Calculator</h2>
+      <input type="number" id="incomeInput" placeholder="Income" />
+      <input type="number" id="allowancesInput" placeholder="Allowances" />
+      <input type="number" id="expensesInput" placeholder="Expenses" />
+      <button id="calculateBtn">Calculate Tax</button>
+      <div id="taxResults"></div>
+    </div>
 
-        // Initialize Firebase and Auth
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const storage = firebase.storage();
-        const storageRef = storage.ref();
+    <!-- 3) AI Assistant Section -->
+    <div class="section">
+      <h2>AI Assistant</h2>
+      <div id="chatHistory" class="chat-history"></div>
+      <div class="chat-input-container">
+        <input
+          type="text"
+          id="chatInput"
+          class="chat-input"
+          placeholder="Ask about your tax return..."
+        />
+        <button id="sendBtn" class="send-button" disabled>
+          <span id="sendText">Send</span>
+          <div id="loadingSpinner" class="loading-spinner"></div>
+        </button>
+      </div>
+      <div id="errorMessage" class="error-message"></div>
+    </div>
 
-        // Auth state listener
-        let authInitialized = false;
-        auth.onAuthStateChanged((user) => {
-            authInitialized = true;
-            if (!user) {
-                window.location.href = '/login.html';
-                return;
-            }
-            refreshFiles();
-        });
+    <!-- 4) Tax Return Section -->
+    <div class="section">
+      <h2>Tax Return Viewer</h2>
+      <div id="taxViewer"></div>
+      <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+        <div>
+          <button id="prevPage">Previous</button>
+          <button id="nextPage">Next</button>
+        </div>
+        <button id="submitReturn">Submit Return</button>
+      </div>
+    </div>
 
-        // Status message function
-        function showStatus(message, type = 'success') {
-            const status = document.createElement('div');
-            status.className = `status-message ${type}`;
-            status.textContent = message;
-            document.body.appendChild(status);
-            setTimeout(() => status.remove(), 3000);
+    <!-- PDF Viewer Container -->
+    <div class="pdf-container">
+        <div id="pdfViewer" class="pdf-viewer"></div>
+        <div class="pdf-controls">
+            <button id="prevPage">Previous</button>
+            <span id="pageNum"></span>
+            <button id="nextPage">Next</button>
+            <select id="zoomLevel">
+                <option value="0.5">50%</option>
+                <option value="1" selected>100%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+            </select>
+        </div>
+    </div>
+  </main>
+
+  <!-- Single Modern Firebase + App Script -->
+  <script type="module">
+    /***********************
+     * 1) Firebase Config  *
+     ***********************/
+    import { 
+      initializeApp 
+    } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js';
+
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js';
+
+    import {
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL,
+      listAll,
+      deleteObject
+    } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-storage.js';
+
+    // If you use callable functions, import them too:
+    // import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-functions.js';
+
+    // Replace with your project's config:
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+      authDomain: "taxstats-document-ai.firebaseapp.com",
+      projectId: "taxstats-document-ai",
+      storageBucket: "taxstats-document-ai.firebasestorage.app",
+      messagingSenderId: "532562763606",
+      appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
+    };
+
+    // Initialize Firebase services
+    const app     = initializeApp(firebaseConfig);
+    const auth    = getAuth(app);
+    const storage = getStorage(app);
+    // const functions = getFunctions(app); // If needed for callable functions
+
+    /*****************************************************
+     * 2) Auth state listener to protect the dashboard   *
+     *****************************************************/
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // If user not logged in, redirect to login
+        window.location.href = '/login.html';
+      } else {
+        // If user is signed in, refresh the file list
+        refreshFiles();
+      }
+    });
+
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    logoutBtn?.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = '/login.html';
+    });
+
+    /*********************************************
+     * 3) Utility: Show a temporary status msg   *
+     *********************************************/
+    function showStatus(message, type = 'success') {
+      const status = document.createElement('div');
+      status.className = `status-message ${type}`;
+      status.textContent = message;
+      document.body.appendChild(status);
+      setTimeout(() => status.remove(), 3000);
+    }
+
+    /***************************************
+     * 4) Document Upload / Listing / Del  *
+     ***************************************/
+    const ALLOWED_TYPES = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const fileList      = document.getElementById('fileList');
+    const uploadBtn     = document.getElementById('uploadBtn');
+    const refreshBtn    = document.getElementById('refreshBtn');
+
+    // Upload document
+    uploadBtn?.addEventListener('click', () => {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = ALLOWED_TYPES.join(',');
+
+      fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        if (!ALLOWED_TYPES.includes(fileExt)) {
+          showStatus('Invalid file type. Allowed: PDF, JPG, PNG', 'error');
+          return;
         }
 
-        // File type validation
-        const ALLOWED_TYPES = ['.pdf', '.jpg', '.jpeg', '.png'];
+        try {
+          // Upload to /uploads/<uid>/<filename>
+          const user = auth.currentUser;
+          if (!user) return;  // edge case
 
-        async function uploadDocument() {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = ALLOWED_TYPES.join(',');
+          const storagePath = `uploads/${user.uid}/${file.name}`;
+          const fileRef     = ref(storage, storagePath);
+
+          await uploadBytes(fileRef, file);
+          // If you need to invoke a callable function:
+          /*
+          const processDocument = httpsCallable(functions, 'processDocument');
+          await processDocument({
+            filename: file.name,
+            path: storagePath
+          });
+          */
+          showStatus('File uploaded successfully', 'success');
+          refreshFiles();
+        } catch (error) {
+          console.error('Upload error:', error);
+          showStatus(error.message, 'error');
+        }
+      };
+
+      fileInput.click();
+    });
+
+    // Refresh file list
+    refreshBtn?.addEventListener('click', refreshFiles);
+
+    async function refreshFiles() {
+      if (!fileList) return;
+      fileList.innerHTML = '';
+
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        // List items under `uploads/<uid>/`
+        const listRef    = ref(storage, `uploads/${user.uid}`);
+        const { items }  = await listAll(listRef);
+
+        if (items.length === 0) {
+          fileList.innerHTML = '<li>No files found.</li>';
+          return;
+        }
+
+        for (const itemRef of items) {
+          const url = await getDownloadURL(itemRef);
+          const li  = document.createElement('li');
+          li.className = 'file-item';
+          li.innerHTML = `
+            <span>${itemRef.name}</span>
+            <div>
+              <a href="${url}" target="_blank">Download</a>
+              <button data-path="${itemRef.fullPath}">Delete</button>
+            </div>
+          `;
+          fileList.appendChild(li);
+        }
+
+        // Attach delete handlers
+        const deleteButtons = fileList.querySelectorAll('button[data-path]');
+        deleteButtons.forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const filePath = btn.getAttribute('data-path');
+            if (!filePath) return;
+            await deleteFile(filePath);
+          });
+        });
+      } catch (err) {
+        console.error(err);
+        showStatus(err.message, 'error');
+      }
+    }
+
+    async function deleteFile(filePath) {
+      try {
+        const fileRef = ref(storage, filePath);
+        await deleteObject(fileRef);
+        showStatus('File deleted successfully', 'success');
+        refreshFiles();
+      } catch (error) {
+        console.error('Delete error:', error);
+        showStatus(error.message, 'error');
+      }
+    }
+
+    /**************************************
+     * 5) Simple Tax Calculator Example   *
+     **************************************/
+    const incomeInput     = document.getElementById('incomeInput');
+    const allowancesInput = document.getElementById('allowancesInput');
+    const expensesInput   = document.getElementById('expensesInput');
+    const calculateBtn    = document.getElementById('calculateBtn');
+    const taxResults      = document.getElementById('taxResults');
+
+    calculateBtn?.addEventListener('click', () => {
+      const income     = parseFloat(incomeInput.value)     || 0;
+      const allowances = parseFloat(allowancesInput.value) || 0;
+      const expenses   = parseFloat(expensesInput.value)   || 0;
+
+      // Simple calculation
+      const taxableIncome = income - allowances - expenses;
+      const tax           = Math.max(0, taxableIncome * 0.2); // 20% for example
+
+      taxResults.innerHTML = `
+        <p>Taxable Income: £${taxableIncome.toFixed(2)}</p>
+        <p>Estimated Tax: £${tax.toFixed(2)}</p>
+      `;
+    });
+
+    /**************************************
+     * 6) Basic Chat with Rate Limiting   *
+     **************************************/
+    let lastMessageTime = 0;
+    const RATE_LIMIT    = 1000; // 1 second between messages
+
+    const chatInput       = document.getElementById('chatInput');
+    const sendBtn         = document.getElementById('sendBtn');
+    const chatHistoryDiv  = document.getElementById('chatHistory');
+    const errorMessageDiv = document.getElementById('errorMessage');
+    const loadingSpinner  = document.getElementById('loadingSpinner');
+
+    // Enable the "Send" button only if there's text
+    chatInput?.addEventListener('input', () => {
+      sendBtn.disabled = !chatInput.value.trim();
+    });
+
+    // Send on Enter
+    chatInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && chatInput.value.trim()) {
+        e.preventDefault();
+        handleChat();
+      }
+    });
+
+    // Send on click
+    sendBtn?.addEventListener('click', handleChat);
+
+    async function handleChat() {
+      const now = Date.now();
+      if (now - lastMessageTime < RATE_LIMIT) {
+        displayError('Please wait before sending another message');
+        return;
+      }
+      lastMessageTime = now;
+
+      try {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        sendBtn.disabled       = true;
+        loadingSpinner.style.display = 'block';
+
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('You are not authenticated.');
+        }
+
+        const token = await user.getIdToken();
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ message })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayChatMessage(message, data.response);
+        chatInput.value = '';
+      } catch (error) {
+        console.error('Chat error:', error);
+        displayError('Failed to send message. Please try again.');
+      } finally {
+        sendBtn.disabled       = false;
+        loadingSpinner.style.display = 'none';
+      }
+    }
+
+    function displayChatMessage(userMsg, botMsg) {
+      const timestamp = new Date().toLocaleTimeString();
+      const msgContainer = document.createElement('div');
+
+      msgContainer.innerHTML = `
+        <div class="message user-message">
+          <div>${userMsg}</div>
+          <div class="message-time">${timestamp}</div>
+        </div>
+        <div class="message bot-message">
+          <div>${botMsg}</div>
+          <div class="message-time">${timestamp}</div>
+        </div>
+      `;
+      chatHistoryDiv.appendChild(msgContainer);
+      chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    }
+
+    function displayError(msg) {
+      errorMessageDiv.textContent = msg;
+      errorMessageDiv.style.display = 'block';
+      setTimeout(() => {
+        errorMessageDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    /*******************************************
+     * 7) Tax Return Viewer (Previous/Next)    *
+     *******************************************/
+    const prevPageBtn   = document.getElementById('prevPage');
+    const nextPageBtn   = document.getElementById('nextPage');
+    const submitReturnBtn = document.getElementById('submitReturn');
+    const taxViewer     = document.getElementById('taxViewer');
+
+    prevPageBtn?.addEventListener('click', () => {
+      // TODO: Implement "previous page" in the PDF viewer
+      showStatus('Going to previous page (not implemented)', 'error');
+    });
+
+    nextPageBtn?.addEventListener('click', () => {
+      // TODO: Implement "next page" in the PDF viewer
+      showStatus('Going to next page (not implemented)', 'error');
+    });
+
+    submitReturnBtn?.addEventListener('click', () => {
+      // TODO: Logic to finalize or submit the return
+      showStatus('Return submitted (placeholder)', 'success');
+    });
+
+    // Initialize PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+        
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    let scale = 1.0;
+
+    async function renderPDF(url) {
+        try {
+            const loadingTask = pdfjsLib.getDocument(url);
+            pdfDoc = await loadingTask.promise;
+            document.getElementById('pageNum').textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+            renderPage(pageNum);
+        } catch (error) {
+            console.error('Error loading PDF:', error);
+            showStatus('Error loading PDF document', 'error');
+        }
+    }
+
+    // PDF.js initialization
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+    
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    let scale = 1.0;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    document.getElementById('pdfViewer').appendChild(canvas);
+
+    // PDF rendering function
+    async function renderPage(num) {
+        pageRendering = true;
+        const page = await pdfDoc.getPage(num);
+        
+        const viewport = page.getViewport({ scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+
+        try {
+            await page.render(renderContext).promise;
+            pageRendering = false;
             
-            fileInput.onchange = async (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        } catch (error) {
+            console.error('Error rendering PDF:', error);
+            showStatus('Error rendering PDF page', 'error');
+        }
+    }
 
-                // Validate file type
-                const fileExt = '.' + file.name.split('.').pop().toLowerCase();
-                if (!ALLOWED_TYPES.includes(fileExt)) {
-                    showStatus('Invalid file type. Allowed: PDF, JPG, PNG', 'error');
-                    return;
-                }
+    // Page navigation
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (pageNum <= 1) return;
+        pageNum--;
+        queueRenderPage(pageNum);
+    });
 
-                try {
-                    const uploadRef = storageRef.child(`uploads/${auth.currentUser.uid}/${file.name}`);
-                    await uploadRef.put(file);
-                    
-                    // Process document
-                    const processDocument = firebase.functions().httpsCallable('processDocument');
-                    await processDocument({ 
-                        filename: file.name,
-                        path: uploadRef.fullPath
-                    });
-                    
-                    showStatus('File uploaded and processed successfully');
-                    refreshFiles();
-                } catch (error) {
-                    console.error('Upload error:', error);
-                    showStatus(error.message, 'error');
+    document.getElementById('nextPage').addEventListener('click', () => {
+        if (pageNum >= pdfDoc.numPages) return;
+        pageNum++;
+        queueRenderPage(pageNum);
+    });
+
+    // Zoom control
+    document.getElementById('zoomLevel').addEventListener('change', (e) => {
+        scale = parseFloat(e.target.value);
+        renderPage(pageNum);
+    });
+
+    // Chat configuration
+    const CHAT_ENDPOINT = 'https://taxstats-api.herokuapp.com/api/chat';
+    const LOGIN_PAGE = '/auth/login.html';
+
+    async function handleChat() {
+        // existing chat handling code
+    }
+
+    /***************************************
+     * 5) PDF Viewer Implementation        *
+     ***************************************/
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+    
+    const pdfViewer = {
+        doc: null,
+        pageNum: 1,
+        pageRendering: false,
+        pageNumPending: null,
+        scale: 1.0,
+        canvas: document.createElement('canvas'),
+        ctx: null,
+
+        init() {
+            this.ctx = this.canvas.getContext('2d');
+            document.getElementById('pdfViewer').appendChild(this.canvas);
+            this.setupControls();
+        },
+
+        async loadDocument(url) {
+            try {
+                const loadingTask = pdfjsLib.getDocument(url);
+                this.doc = await loadingTask.promise;
+                document.getElementById('pageNum').textContent = 
+                    `Page ${this.pageNum} of ${this.doc.numPages}`;
+                this.renderPage(this.pageNum);
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                showStatus('Error loading PDF document', 'error');
+            }
+        },
+
+        async renderPage(num) {
+            this.pageRendering = true;
+            try {
+                const page = await this.doc.getPage(num);
+                const viewport = page.getViewport({ scale: this.scale });
+                
+                this.canvas.height = viewport.height;
+                this.canvas.width = viewport.width;
+                
+                await page.render({
+                    canvasContext: this.ctx,
+                    viewport: viewport
+                }).promise;
+                
+                this.pageRendering = false;
+                if (this.pageNumPending !== null) {
+                    this.renderPage(this.pageNumPending);
+                    this.pageNumPending = null;
                 }
+            } catch (error) {
+                console.error('Error rendering page:', error);
+                showStatus('Error rendering page', 'error');
+            }
+        },
+
+        setupControls() {
+            document.getElementById('prevPage').onclick = () => {
+                if (this.pageNum <= 1) return;
+                this.pageNum--;
+                this.renderPage(this.pageNum);
             };
 
-            fileInput.click();
+            document.getElementById('nextPage').onclick = () => {
+                if (this.pageNum >= this.doc.numPages) return;
+                this.pageNum++;
+                this.renderPage(this.pageNum);
+            };
+
+            document.getElementById('zoomLevel').onchange = (e) => {
+                this.scale = parseFloat(e.target.value);
+                this.renderPage(this.pageNum);
+            };
         }
+    };
 
-        async function refreshFiles() {
-            const fileList = document.getElementById('fileList');
-            if (!fileList) return;
+    // Initialize PDF viewer
+    pdfViewer.init();
 
-            try {
-                const uploadsList = await storageRef.child('uploads').listAll();
-                fileList.innerHTML = '';
-
-                for (const item of uploadsList.items) {
-                    const url = await item.getDownloadURL();
-                    const li = document.createElement('li');
-                    li.className = 'file-item';
-                    li.innerHTML = `
-                        <span>${item.name}</span>
-                        <div>
-                            <a href="${url}" target="_blank">Download</a>
-                            <button onclick="deleteFile('${item.fullPath}')">Delete</button>
-                        </div>
-                    `;
-                    fileList.appendChild(li);
-                }
-            } catch (error) {
-                console.error('Refresh error:', error);
-                showStatus(error.message, 'error');
-            }
-        }
-
-        async function deleteFile(filePath) {
-            try {
-                const fileRef = storageRef.child(filePath);
-                await fileRef.delete();
-                showStatus('File deleted successfully');
-                refreshFiles();
-            } catch (error) {
-                console.error('Delete error:', error);
-                showStatus(error.message, 'error');
-            }
-        }
-
-        // Chat handler with auth
-        let chatHistory = [];
-
-        async function handleChat() {
-            try {
-                const message = chatInput.value.trim();
-                if (!message) return;
-
-                const user = auth.currentUser;
-                if (!user) {
-                    throw new Error('Not authenticated');
-                }
-
-                const token = await user.getIdToken();
-                chatBtn.disabled = true;
-                
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ message })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                displayChatMessage(message, data.response);
-                chatInput.value = '';
-                
-            } catch (error) {
-                console.error('Chat error:', error);
-                displayError('Failed to send message. Please try again.');
-            } finally {
-                chatBtn.disabled = false;
-            }
-        }
-
-        // Tax calculator
-        function calculateTax() {
-            const income = parseFloat(document.getElementById('incomeInput').value) || 0;
-            const allowances = parseFloat(document.getElementById('allowancesInput').value) || 0;
-            const expenses = parseFloat(document.getElementById('expensesInput').value) || 0;
-
-            const taxableIncome = income - allowances - expenses;
-            const tax = Math.max(0, taxableIncome * 0.2); // Simple 20% tax rate
-
-            document.getElementById('taxResults').innerHTML = `
-                <p>Taxable Income: £${taxableIncome.toFixed(2)}</p>
-                <p>Estimated Tax: £${tax.toFixed(2)}</p>
-            `;
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            // Upload and refresh
-            document.getElementById('uploadBtn')?.addEventListener('click', uploadDocument);
-            document.getElementById('refreshBtn')?.addEventListener('click', refreshFiles);
-
-            // Chat
-            const chatInput = document.getElementById('chatInput');
-            const sendBtn = document.getElementById('sendBtn');
-
-            if (sendBtn) {
-                sendBtn.addEventListener('click', handleChat);
-            }
-
-            if (chatInput) {
-                chatInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleChat();
-                    }
-                });
-            }
-
-            // Tax calculator
-            document.getElementById('calculateBtn')?.addEventListener('click', calculateTax);
-
-            // Logout
-            document.getElementById('logoutBtn')?.addEventListener('click', () => {
-                auth.signOut().then(() => {
-                    window.location.href = '/login.html';
-                });
-            });
-
-            // Chat functionality
-            const chatInput = document.getElementById('chatInput');
-            const chatBtn = document.getElementById('sendChatBtn');
-            const chatHistory = document.getElementById('chatHistory');
-
-            async function handleChat() {
-                const now = Date.now();
-                if (now - lastMessageTime < RATE_LIMIT) {
-                    displayError('Please wait before sending another message');
-                    return;
-                }
-                lastMessageTime = now;
-
-                try {
-                    const message = chatInput.value.trim();
-                    if (!message) return;
-
-                    const user = auth.currentUser;
-                    if (!user) throw new Error('Not authenticated');
-
-                    const token = await user.getIdToken();
-                    
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ message })
-                    });
-
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    
-                    const data = await response.json();
-                    displayChatMessage(message, data.response);
-                    chatInput.value = '';
-                    
-                } catch (error) {
-                    console.error('Chat error:', error);
-                    displayError('Failed to send message. Please try again.');
-                }
-            }
-
-            chatBtn?.addEventListener('click', handleChat);
-            chatInput?.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleChat();
-            });
-        });
-
-        function displayChatMessage(message, response) {
-            const messageDiv = document.createElement('div');
-            messageDiv.innerHTML = `
-                <p class="user-message">${message}</p>
-                <p class="bot-message">${response}</p>
-            `;
-            chatHistory.appendChild(messageDiv);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
-
-        function displayError(message) {
-            const errorDiv = document.getElementById('error-message');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
-    </script>
-    <script type="module">
-        import { initializeApp } from 'firebase/app';
-        import { getAuth, onAuthStateChanged } from 'firebase/auth';
-
-        // Firebase configuration
-        const firebaseConfig = {
-            // Your firebase config here
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-
-        // Auth state observer
-        onAuthStateChanged(auth, user => {
-            const authStatus = document.getElementById('auth-status');
-            if (user) {
-                authStatus.textContent = `Signed in as ${user.email}`;
-                authStatus.className = 'auth-status signed-in';
-            } else {
-                window.location.href = '/login.html';
-            }
-        });
-
-        // Token refresh handler
-        let tokenRefreshTimeout;
-        async function refreshToken() {
-            const user = auth.currentUser;
-            if (user) {
-                await user.getIdToken(true);
-                // Schedule next refresh
-                tokenRefreshTimeout = setTimeout(refreshToken, 30 * 60 * 1000); // 30 mins
-            }
-        }
-
-        // Add token refresh mechanism
-        let tokenRefreshInterval;
+    // File upload handling
+    async function handleFileUpload(file) {
+        if (!file) return;
         
-        function startTokenRefresh() {
-            tokenRefreshInterval = setInterval(async () => {
-                const user = auth.currentUser;
-                if (user) {
-                    try {
-                        await user.getIdToken(true);
-                    } catch (error) {
-                        console.error('Token refresh failed:', error);
-                        displayError('Session refresh failed');
-                    }
-                }
-            }, 30 * 60 * 1000); // 30 minutes
+        // Validate file type
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        if (!ALLOWED_TYPES.includes(fileExt)) {
+            showStatus('Invalid file type. Allowed: PDF, JPG, PNG', 'error');
+            return;
         }
 
-        function stopTokenRefresh() {
-            clearInterval(tokenRefreshInterval);
-        }
+        try {
+            // Upload file to storage
+            const timestamp = Date.now();
+            const filePath = `documents/${auth.currentUser.uid}/${timestamp}-${file.name}`;
+            const fileRef = ref(storage, filePath);
+            
+            await uploadBytes(fileRef, file);
+            const url = await getDownloadURL(fileRef);
 
-        // Add rate limiting for chat
-        const RATE_LIMIT = 1000; // 1 second between messages
-        let lastMessageTime = 0;
-
-        async function handleChat() {
-            const now = Date.now();
-            if (now - lastMessageTime < RATE_LIMIT) {
-                displayError('Please wait before sending another message');
-                return;
+            // If PDF, load in viewer
+            if (fileExt === '.pdf') {
+                await pdfViewer.loadDocument(url);
             }
-            lastMessageTime = now;
 
-            ...existing code...
+            showStatus('File uploaded successfully', 'success');
+            refreshFiles();
+        } catch (error) {
+            console.error('Upload error:', error);
+            showStatus(error.message, 'error');
         }
+    }
 
-        window.handleChat = handleChat;
-        window.startTokenRefresh = refreshToken;
-        window.clearTokenRefresh = () => clearTimeout(tokenRefreshTimeout);
-    </script>
+    // File selection handler
+    uploadBtn?.addEventListener('click', () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = ALLOWED_TYPES.join(',');
+        fileInput.onchange = (e) => handleFileUpload(e.target.files[0]);
+        fileInput.click();
+    });
+
+    // Queue render page function
+    function queueRenderPage(num) {
+        if (pageRendering) {
+            pageNumPending = num;
+        } else {
+            renderPage(num);
+        }
+        document.getElementById('pageNum').textContent = `Page ${num} of ${pdfDoc.numPages}`;
+    }
+
+    // Initialize canvas and viewer
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    document.getElementById('pdfViewer').appendChild(canvas);
+
+    // PDF viewer error handler
+    function handlePDFError(error) {
+        console.error('PDF Error:', error);
+        showStatus('Error loading PDF document', 'error');
+        document.getElementById('pdfViewer').innerHTML = `
+            <div class="error-message">
+                Failed to load PDF. Please try again.
+            </div>
+        `;
+    }
+
+    // Zoom control handler
+    document.getElementById('zoomLevel').addEventListener('change', (e) => {
+        scale = parseFloat(e.target.value);
+        renderPage(pageNum);
+    });
+
+    // Update page display
+    function updatePageDisplay() {
+        document.getElementById('pageNum').textContent = 
+            pdfDoc ? `Page ${pageNum} of ${pdfDoc.numPages}` : 'No document loaded';
+    }
+  </script>
 </body>
 </html>
