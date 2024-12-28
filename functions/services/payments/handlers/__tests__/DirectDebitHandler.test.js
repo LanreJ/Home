@@ -600,4 +600,47 @@ describe('DirectDebitHandler', () => {
             expect(updatedPlan.status).toBe('REQUIRES_ATTENTION');
         });
     });
+
+    describe('authentication and authorization', () => {
+        test('should handle unauthorized access', async () => {
+            // Mock unauthorized token
+            mockDb.verifyToken.mockRejectedValue({
+                code: 401,
+                message: 'Unauthorized access'
+            });
+
+            const payment = {
+                accountNumber: '12345678',
+                sortCode: '12-34-56',
+                amount: 100
+            };
+
+            await expect(handler.process(payment))
+                .rejects
+                .toThrow('Unauthorized access');
+
+            const errorLog = await mockDb.collection('auth_errors').get();
+            expect(errorLog.docs[0].data()).toMatchObject({
+                type: 'AUTH_ERROR',
+                code: 401,
+                timestamp: expect.any(Date),
+                details: expect.any(Object)
+            });
+        });
+
+        test('should validate API tokens', async () => {
+            const invalidToken = 'invalid-token';
+            
+            await expect(handler.validateToken(invalidToken))
+                .rejects
+                .toThrow('Invalid API token');
+
+            const authLog = await mockDb.collection('auth_logs').get();
+            expect(authLog.docs[0].data()).toMatchObject({
+                status: 'FAILED',
+                reason: 'INVALID_TOKEN',
+                timestamp: expect.any(Date)
+            });
+        });
+    });
 });

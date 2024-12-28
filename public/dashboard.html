@@ -415,5 +415,44 @@
             });
         });
     </script>
+    <script type="module">
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, onAuthStateChanged } from 'firebase/auth';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            // Your firebase config here
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Auth state observer
+        onAuthStateChanged(auth, user => {
+            const authStatus = document.getElementById('auth-status');
+            if (user) {
+                authStatus.textContent = `Signed in as ${user.email}`;
+                authStatus.className = 'auth-status signed-in';
+            } else {
+                window.location.href = '/login.html';
+            }
+        });
+
+        // Token refresh handler
+        let tokenRefreshTimeout;
+        async function refreshToken() {
+            const user = auth.currentUser;
+            if (user) {
+                await user.getIdToken(true);
+                // Schedule next refresh
+                tokenRefreshTimeout = setTimeout(refreshToken, 30 * 60 * 1000); // 30 mins
+            }
+        }
+
+        window.handleChat = handleChat;
+        window.startTokenRefresh = refreshToken;
+        window.clearTokenRefresh = () => clearTimeout(tokenRefreshTimeout);
+    </script>
 </body>
 </html>
