@@ -14,6 +14,37 @@ class PlaidClient {
 
         this.client = new PlaidApi(configuration);
         this.processStartTime = null;
+        this.exchangeRates = null;
+    }
+
+    async initializeExchangeRates() {
+        try {
+            const response = await fetch('https://api.hmrc.gov.uk/exchange-rates', {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${process.env.HMRC_API_TOKEN}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HMRC API error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            this.exchangeRates = {
+                USD: data.rates.usd || 0.79,
+                EUR: data.rates.eur || 0.86,
+                GBP: 1.0
+            };
+            this.ratesLastUpdated = new Date().toISOString();
+        } catch (error) {
+            console.warn('Failed to fetch HMRC rates, using defaults:', error);
+            this.exchangeRates = {
+                USD: 0.79,
+                EUR: 0.86,
+                GBP: 1.0
+            };
+        }
     }
 
     async createLinkToken(userId) {
@@ -58,16 +89,45 @@ class PlaidClient {
             const response = await this.client.itemPublicTokenExchange({
                 public_token: publicToken
             });
+            
+            const accessToken = response.data.access_token;
+            const validation = await this.validateAccessToken(accessToken);
+            
             return {
-                accessToken: response.data.access_token,
+                accessToken,
                 itemId: response.data.item_id,
                 metadata: {
-                    createdAt: new Date().toISOString(),
-                    status: 'ACTIVE'
+                    exchangedAt: new Date().toISOString(),
+                    status: validation.isValid ? 'ACTIVE' : 'INVALID',
+                    validation,
+                    processing: {
+                        startTime: new Date().toISOString(),
+                        status: 'READY'
+                    }
                 }
             };
         } catch (error) {
             throw new Error(`Token exchange failed: ${error.message}`);
+        }
+    }
+
+    async validateAccessToken(accessToken) {
+        try {
+            await this.client.accountsGet({
+                access_token: accessToken
+            });
+            return {
+                isValid: true,
+                tokenType: 'ACCESS_TOKEN',
+                validatedAt: new Date().toISOString()
+            };
+        } catch (error) {
+            return {
+                isValid: false,
+                tokenType: 'ACCESS_TOKEN',
+                error: error.message,
+                validatedAt: new Date().toISOString()
+            };
         }
     }
 
@@ -125,25 +185,36 @@ class PlaidClient {
         let allTransactions = [];
         let hasMore = true;
         let cursor = null;
+        let batchCount = 0;
 
         while (hasMore) {
-            const response = await this.client.transactionsSync({
-                ...request,
-                cursor
-            });
-            
-            allTransactions = [...allTransactions, ...response.data.added];
-            hasMore = response.data.has_more;
-            cursor = response.data.next_cursor;
+            try {
+                const response = await this.client.transactionsSync({
+                    ...request,
+                    cursor
+                });
+                
+                allTransactions = [...allTransactions, ...response.data.added];
+                hasMore = response.data.has_more;
+                cursor = response.data.next_cursor;
+                batchCount++;
+            } catch (error) {
+                throw new Error(`Failed to fetch transactions batch: ${error.message}`);
+            }
         }
 
         return {
             transactions: allTransactions,
             metadata: {
                 count: allTransactions.length,
+                batchCount,
                 dateRange: { startDate, endDate },
                 processedAt: new Date().toISOString(),
-                status: 'COMPLETED'
+                status: 'COMPLETED',
+                validation: {
+                    hasTransactions: allTransactions.length > 0,
+                    dateRangeValid: this.validateDateRange(startDate, endDate)
+                }
             }
         };
     }
@@ -154,13 +225,27 @@ class PlaidClient {
                 access_token: accessToken
             });
 
+            if (!this.exchangeRates) {
+                await this.initializeExchangeRates();
+            }
+
             const accounts = response.data.accounts.map(account => ({
                 accountId: account.account_id,
                 name: account.name,
                 type: account.type,
                 subtype: account.subtype,
                 balance: {
-                    current: account.balances.current,
+                    original: {
+                        amount: account.balances.current,
+                        currency: account.balances.iso_currency_code || 'GBP'
+                    },
+                    gbp: {
+                        amount: this.convertToGBP(
+                            account.balances.current,
+                            account.balances.iso_currency_code || 'GBP'
+                        ),
+                        exchangeRate: this.exchangeRates[account.balances.iso_currency_code || 'GBP']
+                    },
                     available: account.balances.available,
                     limit: account.balances.limit
                 },
@@ -168,7 +253,8 @@ class PlaidClient {
                 metadata: {
                     lastUpdated: new Date().toISOString(),
                     institution: response.data.item.institution_id,
-                    status: account.balances.current !== null ? 'ACTIVE' : 'INACTIVE'
+                    status: account.balances.current !== null ? 'ACTIVE' : 'INACTIVE',
+                    exchangeRateTimestamp: this.ratesLastUpdated
                 }
             }));
 
@@ -178,6 +264,7 @@ class PlaidClient {
                 metadata: {
                     fetchedAt: new Date().toISOString(),
                     totalAccounts: accounts.length,
+                    currencies: [...new Set(accounts.map(a => a.balance.original.currency))],
                     status: 'COMPLETED'
                 }
             };
@@ -205,23 +292,9 @@ class PlaidClient {
         };
     }
 
-    processTransactions(data) {
-        return {
-            income: this.categorizeIncome(data.transactions),
-            expenses: this.categorizeExpenses(data.transactions),
-            metadata: {
-                accountIds: data.accounts.map(acc => acc.account_id),
-                dateRange: {
-                    start: data.start_date,
-                    end: data.end_date
-                }
-            }
-        };
-    }
-
     categorizeIncome(transactions) {
         const incomeCategories = {
-            salary: ['salary', 'payroll', 'wages'],
+            salary:8 ['salary', 'payroll', 'wages'],
             selfEmployment: ['freelance', 'contractor', 'consulting', 'business income'],
             property: ['rent', 'rental income', 'lease'],
             investments: ['dividend', 'interest', 'investment income']
@@ -251,7 +324,7 @@ class PlaidClient {
         const searchText = [
             transaction.name,
             transaction.original_description,
-            ...(transaction.category || [])
+            ...(transaction.category || []) 
         ].join(' ').toLowerCase();
 
         return keywords.some(keyword => searchText.includes(keyword));
@@ -291,7 +364,7 @@ class PlaidClient {
         return null;
     }
 
-    categorizeTransactions(transactions) {
+    categorizeAndSummarizeTransactions(transactions) {
         const income = this.categorizeIncome(transactions);
         const expenses = this.categorizeExpenses(transactions);
         
@@ -353,7 +426,7 @@ class PlaidClient {
                 this.getAccountBalances(accessToken)
             ]);
 
-            const categorized = this.categorizeTransactions(transactions.transactions);
+            const categorized = this.categorizeAndSummarizeTransactions(transactions.transactions);
             
             return {
                 data: {
@@ -425,27 +498,36 @@ class PlaidClient {
 
     async validateFinancialData(data) {
         const validation = {
-            checks: this.performValidationChecks(data),
+            isValid: true,
+            checks: {
+                hasTransactions: data.transactions.length > 0,
+                hasIncome: data.income.total > 0,
+                hasValidDateRange: this.validateDateRange(data.metadata.dateRange),
+                hasRequiredCategories: this.checkRequiredCategories(data),
+                hasSufficientData: data.transactions.length >= 10
+            },
             warnings: this.generateWarnings(data),
-            taxImplications: this.calculateTaxImplications(data),
+            taxImplications: {
+                requiresSelfAssessment: data.income.selfEmployment > 1000,
+                vatRegistrationRequired: data.income.selfEmployment > 85000,
+                highIncomeWarning: data.income.total > 100000,
+                expenseRatioWarning: (data.expenses.total / data.income.total) > 0.8
+            },
             metadata: {
                 processedAt: new Date().toISOString(),
                 status: 'VALIDATING',
-                taxYear: data.metadata.taxYear
+                warningCount: 0,
+                severity: 'NONE',
+                lastUpdated: new Date().toISOString()
             }
         };
 
-        return {
-            isValid: this.isDataValid(validation),
-            validation,
-            status: this.determineProcessingStatus(validation),
-            metadata: {
-                ...validation.metadata,
-                status: 'VALIDATED',
-                warningCount: validation.warnings.length,
-                severity: this.calculateWarningSeverity(validation.warnings)
-            }
-        };
+        validation.metadata.warningCount = validation.warnings.length;
+        validation.metadata.severity = this.calculateWarningSeverity(validation.warnings);
+        validation.metadata.status = validation.isValid ? 'VALIDATED' : 'FAILED';
+        validation.isValid = Object.values(validation.checks).every(check => check);
+
+        return validation;
     }
 
     performValidationChecks(data) {
@@ -471,7 +553,7 @@ class PlaidClient {
         const warnings = [];
         
         // Income thresholds
-        if (data.summary.totalIncome > 100000) {
+        if (data.income.total > 100000) {
             warnings.push('High income: Additional reporting required');
         }
         
@@ -485,11 +567,6 @@ class PlaidClient {
         if (expenseRatio > 0.8) {
             warnings.push('High expense ratio: Documentation required');
         }
-        
-        // Tax registration
-        if (data.income.selfEmployment > 1000 || data.income.property > 1000) {
-            warnings.push('Self Assessment registration required');
-        }
 
         return {
             warnings,
@@ -497,7 +574,8 @@ class PlaidClient {
             requiresAction: warnings.length > 0,
             metadata: {
                 generatedAt: new Date().toISOString(),
-                count: warnings.length
+                count: warnings.length,
+                highestSeverity: this.calculateWarningSeverity(warnings)
             }
         };
     }
@@ -618,16 +696,44 @@ class PlaidClient {
                 public_token: publicToken
             });
             
+            const accessToken = response.data.access_token;
+            const validation = await this.validateAccessToken(accessToken);
+            
             return {
-                accessToken: response.data.access_token,
+                accessToken,
                 itemId: response.data.item_id,
                 metadata: {
                     exchangedAt: new Date().toISOString(),
-                    status: 'ACTIVE'
+                    status: validation.isValid ? 'ACTIVE' : 'INVALID',
+                    validation,
+                    processing: {
+                        startTime: new Date().toISOString(),
+                        status: 'READY'
+                    }
                 }
             };
         } catch (error) {
             throw new Error(`Token exchange failed: ${error.message}`);
+        }
+    }
+
+    async validateAccessToken(accessToken) {
+        try {
+            await this.client.accountsGet({
+                access_token: accessToken
+            });
+            return {
+                isValid: true,
+                tokenType: 'ACCESS_TOKEN',
+                validatedAt: new Date().toISOString()
+            };
+        } catch (error) {
+            return {
+                isValid: false,
+                tokenType: 'ACCESS_TOKEN',
+                error: error.message,
+                validatedAt: new Date().toISOString()
+            };
         }
     }
 
@@ -640,7 +746,7 @@ class PlaidClient {
                 this.fetchAllTransactions(accessToken, startDate, endDate),
                 this.getAccountBalances(accessToken)
             ]);
-
+            
             const categorized = await this.categorizeTransactions(transactions.transactions);
             const validation = await this.validateTransactionData(categorized);
             const summary = this.generateFinancialSummary(categorized);
@@ -690,9 +796,100 @@ class PlaidClient {
     }
 
     validateTransactionData(data) {
-        return {
+        const validation = {
             isValid: true,
             checks: {
                 hasTransactions: data.transactions.length > 0,
                 hasIncome: data.income.total > 0,
-                hasValidDateRange:
+                hasValidDateRange: this.validateDateRange(data.metadata.dateRange),
+                hasRequiredCategories: this.checkRequiredCategories(data),
+                hasSufficientData: data.transactions.length >= 10,
+                hasValidCurrencies: this.validateCurrencies(data.transactions)
+            },
+            warnings: this.generateWarnings(data),
+            taxImplications: {
+                requiresSelfAssessment: data.income.selfEmployment > 1000 || data.income.property > 1000,
+                vatRegistrationRequired: data.income.selfEmployment > 85000,
+                highIncomeWarning: data.income.total > 100000,
+                multiCurrencyWarning: this.hasMultipleCurrencies(data.transactions)
+            },
+            metadata: {
+                processedAt: new Date().toISOString(),
+                status: 'VALIDATING',
+                warningCount: 0,
+                severity: 'NONE',
+                lastUpdated: new Date().toISOString(),
+                exchangeRates: this.exchangeRates,
+                ratesLastUpdated: this.ratesLastUpdated
+            }
+        };
+
+        validation.metadata.warningCount = validation.warnings.length;
+        validation.metadata.severity = this.calculateWarningSeverity(validation.warnings);
+        validation.metadata.status = validation.isValid ? 'VALIDATED' : 'FAILED';
+        validation.isValid = Object.values(validation.checks).every(check => check);
+
+        return validation;
+    }
+
+    async categorizeTransactions(transactions) {
+        const categories = {
+            income: {
+                employment: ['salary', 'wages', 'payroll'],
+                selfEmployment: ['freelance', 'contractor', 'consulting'],
+                property: ['rent', 'rental income', 'lease'],
+                investments: ['dividend', 'interest', 'investment']
+            },
+            expenses: {
+                business: ['office', 'supplies', 'equipment'],
+                property: ['mortgage', 'maintenance', 'repairs'],
+                allowable: ['insurance', 'utilities', 'professional']
+            }
+        };
+
+        const result = {
+            categorized: transactions.reduce((acc, transaction) => {
+                const convertedAmount = await this.convertToGBP(
+                    Math.abs(transaction.amount), 
+                    transaction.iso_currency_code || 'GBP'
+                );
+                const isIncome = transaction.amount < 0;
+                const categoryType = isIncome ? 'income' : 'expenses';
+                
+                for (const [category, keywords] of Object.entries(categories[categoryType])) {
+                    if (this.matchesCategory(transaction, keywords)) {
+                        acc[categoryType][category] = (acc[categoryType][category] || 0) + convertedAmount;
+                        acc.originalAmounts.push({
+                            id: transaction.transaction_id,
+                            original: transaction.amount,
+                            currency: transaction.iso_currency_code,
+                            converted: convertedAmount,
+                            exchangeRate: this.exchangeRates[transaction.iso_currency_code || 'GBP']
+                        });
+                        break;
+                    }
+                }
+                return acc;
+            }, { income: {}, expenses: {}, originalAmounts: [] }),
+            metadata: {
+                processedAt: new Date().toISOString(),
+                transactionCount: transactions.length,
+                currencies: [...new Set(transactions.map(t => t.iso_currency_code || 'GBP'))],
+                exchangeRates: this.exchangeRates,
+                ratesLastUpdated: this.ratesLastUpdated
+            }
+        };
+
+        return result;
+    }
+
+    async convertToGBP(amount, currency) {
+        if (!this.exchangeRates) {
+            await this.initializeExchangeRates();
+        }
+        if (!this.exchangeRates[currency]) {
+            throw new Error(`Unsupported currency: ${currency}`);
+        }
+        return amount * this.exchangeRates[currency];
+    }
+}
