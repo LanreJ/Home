@@ -18,43 +18,105 @@ class AccountInsights {
 
         return {
             paymentInsights: await this.analyzePayments(accountSummary, paymentHistory),
-            filingInsights: this.analyzeFilingHistory(accountSummary),
+            filingInsights: await this.analyzeFilingHistory(accountSummary),
             complianceRisks: this.assessCompliance(statements),
             recommendations: this.generateRecommendations(accountSummary)
         };
     }
 
     async analyzePayments(summary, history) {
+        const trends = this.calculatePaymentTrends(history);
+        const risks = this.assessPaymentRisks(summary, trends);
+        const forecast = this.generatePaymentForecast(trends);
+
         return {
-            nextPaymentDue: {
+            currentBalance: summary.balances.total,
+            nextPayment: {
                 date: summary.nextPayment.dueDate,
                 amount: summary.nextPayment.amount,
                 urgency: this.calculatePaymentUrgency(summary.nextPayment.dueDate)
             },
-            paymentTrends: this.calculatePaymentTrends(history),
-            suggestionsByDate: this.suggestPaymentDates(history),
-            paymentPlanEligibility: this.checkPaymentPlanEligibility(summary)
+            paymentTrends: trends,
+            riskAssessment: risks,
+            forecast: forecast,
+            planningOptions: {
+                paymentPlan: this.evaluatePaymentPlanOptions(summary),
+                budgetSuggestions: this.generateBudgetSuggestions(trends)
+            }
         };
     }
 
     async analyzeFilingHistory(accountSummary) {
-        // Implementation for analyzing filing history
+        const currentTaxYear = this.getCurrentTaxYear();
+        return {
+            missingReturns: this.identifyMissingReturns(accountSummary.filings.missingYears),
+            filingPattern: {
+                onTime: accountSummary.filings.lastFiled ? this.isFiledOnTime(accountSummary.filings.lastFiled) : null,
+                averageFilingDate: this.calculateAverageFilingDate(accountSummary.filings),
+                riskLevel: this.assessFilingRisk(accountSummary.filings)
+            },
+            nextDeadline: {
+                date: `${currentTaxYear + 1}-01-31`,
+                daysRemaining: this.calculateDaysToDeadline(currentTaxYear),
+                status: this.getFilingStatus(currentTaxYear)
+            }
+        };
     }
 
     calculatePaymentTrends(history) {
-        const trends = {
-            averagePayment: 0,
-            paymentFrequency: 'UNKNOWN',
-            seasonalPatterns: []
+        return {
+            averagePayment: this.calculateAveragePayment(history),
+            frequency: this.analyzePaymentFrequency(history),
+            seasonalPatterns: this.detectSeasonalPatterns(history),
+            complianceScore: this.calculatePaymentComplianceScore(history)
         };
-        
-        if (history.length > 0) {
-            trends.averagePayment = history.reduce((sum, payment) => 
-                sum + payment.amount, 0) / history.length;
-            trends.paymentFrequency = this.detectPaymentPattern(history);
-        }
-        
-        return trends;
+    }
+
+    assessCompliance(statements) {
+        return {
+            riskLevel: this.calculateRiskLevel(statements),
+            issues: this.identifyComplianceIssues(statements),
+            suggestions: this.generateComplianceSuggestions(statements),
+            history: {
+                latePayments: this.countLatePayments(statements),
+                missedDeadlines: this.countMissedDeadlines(statements),
+                penalties: this.calculatePenalties(statements)
+            }
+        };
+    }
+
+    assessComplianceRisk(statements) {
+        return {
+            overallRisk: this.calculateRiskScore(statements),
+            missedDeadlines: this.countMissedDeadlines(statements),
+            latePayments: this.analyzeLatePayments(statements),
+            penaltyHistory: this.analyzePenalties(statements),
+            recommendations: this.generateComplianceRecommendations(statements)
+        };
+    }
+
+    generateRecommendations(accountSummary) {
+        return {
+            immediate: this.getImmediateActions(accountSummary),
+            shortTerm: this.getShortTermRecommendations(accountSummary),
+            longTerm: this.getLongTermSuggestions(accountSummary),
+            paymentPlans: this.getPaymentPlanOptions(accountSummary)
+        };
+    }
+
+    generatePaymentForecast(trends) {
+        return {
+            nextYearEstimate: this.estimateNextYearPayments(trends),
+            cashflowProjection: this.projectCashflow(trends),
+            savingsRecommendations: this.calculateRecommendedSavings(trends)
+        };
+    }
+
+    getCurrentTaxYear() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        return month >= 4 ? year : year - 1;
     }
 }
 
