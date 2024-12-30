@@ -20,18 +20,11 @@
     "functions": {
       "source": "functions",
       "region": "europe-west2",
-      "runtime": "nodejs18",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" install"
-      ],
-      "environmentVariables": {
-        "GOOGLE_APPLICATION_CREDENTIALS": "./key.json"
+      "build": {
+        "environmentVariables": {
+          "PROJECT_ID": "taxstats-document-ai",
+          "PROCESSOR_ID": "937da5fa78490a0b"
+        }
       }
     },
     "emulators": {
