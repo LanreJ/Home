@@ -451,31 +451,33 @@ class PlaidClient {
         try {
             const startDate = `${taxYear}-04-06`;
             const endDate = `${parseInt(taxYear) + 1}-04-05`;
-            
+
             const [transactions, accounts] = await Promise.all([
                 this.fetchAllTransactions(accessToken, startDate, endDate),
                 this.getAccountBalances(accessToken)
             ]);
 
-            const processed = await this.validateAndProcessData({
-                transactions: transactions.transactions,
-                accounts,
-                metadata: {
-                    taxYear,
-                    dateRange: { startDate, endDate }
-                }
-            });
+            const categorized = await this.categorizeTransactions(transactions.transactions);
+            const validation = await this.validateTransactionData(categorized);
+            const summary = this.generateFinancialSummary(categorized);
 
             return {
-                data: processed,
-                summary: this.generateFinancialSummary(processed),
-                validation: this.validateFinancialData(processed),
-                status: this.determineProcessingStatus(processed.validation),
+                data: {
+                    transactions: categorized,
+                    accounts: accounts.accounts
+                },
+                summary,
+                validation,
                 metadata: {
+                    taxYear,
                     processedAt: new Date().toISOString(),
-                    accountCount: accounts.length,
+                    status: validation.isValid ? 'PROCESSED' : 'NEEDS_REVIEW',
                     transactionCount: transactions.transactions.length,
-                    version: '1.0'
+                    accountCount: accounts.accounts.length,
+                    dateRange: { startDate, endDate },
+                    currencies: [...new Set(transactions.transactions.map(t => t.iso_currency_code || 'GBP'))],
+                    exchangeRates: this.exchangeRates,
+                    ratesLastUpdated: this.ratesLastUpdated
                 }
             };
         } catch (error) {
@@ -750,11 +752,13 @@ class PlaidClient {
             const categorized = await this.categorizeTransactions(transactions.transactions);
             const validation = await this.validateTransactionData(categorized);
             const summary = this.generateFinancialSummary(categorized);
+            const exchangeRates = await this.getExchangeRates();
 
             return {
                 data: {
                     transactions: categorized,
-                    accounts: accounts.accounts
+                    accounts: accounts.accounts,
+                    currencies: [...new Set(transactions.transactions.map(t => t.iso_currency_code))]
                 },
                 summary,
                 validation,
@@ -764,7 +768,9 @@ class PlaidClient {
                     status: validation.isValid ? 'PROCESSED' : 'NEEDS_REVIEW',
                     transactionCount: transactions.transactions.length,
                     accountCount: accounts.accounts.length,
-                    dateRange: { startDate, endDate }
+                    dateRange: { startDate, endDate },
+                    exchangeRates,
+                    ratesLastUpdated: this.ratesLastUpdated
                 },
                 taxCategories: {
                     income: this.mapToTaxCategories(categorized.income),
@@ -807,12 +813,7 @@ class PlaidClient {
                 hasValidCurrencies: this.validateCurrencies(data.transactions)
             },
             warnings: this.generateWarnings(data),
-            taxImplications: {
-                requiresSelfAssessment: data.income.selfEmployment > 1000 || data.income.property > 1000,
-                vatRegistrationRequired: data.income.selfEmployment > 85000,
-                highIncomeWarning: data.income.total > 100000,
-                multiCurrencyWarning: this.hasMultipleCurrencies(data.transactions)
-            },
+            taxImplications: this.calculateTaxImplications(data),
             metadata: {
                 processedAt: new Date().toISOString(),
                 status: 'VALIDATING',
@@ -826,7 +827,6 @@ class PlaidClient {
 
         validation.metadata.warningCount = validation.warnings.length;
         validation.metadata.severity = this.calculateWarningSeverity(validation.warnings);
-        validation.metadata.status = validation.isValid ? 'VALIDATED' : 'FAILED';
         validation.isValid = Object.values(validation.checks).every(check => check);
 
         return validation;
@@ -892,4 +892,101 @@ class PlaidClient {
         }
         return amount * this.exchangeRates[currency];
     }
+
+    async validateCurrencies(transactions) {
+        const currencies = new Set(transactions.map(t => t.iso_currency_code || 'GBP'));
+        const unsupportedCurrencies = [...currencies].filter(c => !this.exchangeRates[c]);
+        
+        if (unsupportedCurrencies.length > 0) {
+            throw new Error(`Unsupported currencies: ${unsupportedCurrencies.join(', ')}`);
+        }
+
+        const conversionMeta = {
+            currencies: Array.from(currencies),
+            exchangeRates: this.exchangeRates,
+            ratesLastUpdated: this.ratesLastUpdated,
+            validation: {
+                isValid: true,
+                supportedCurrencies: true,
+                ratesFresh: this.calculateRateAge() < 24,
+                requiresRefresh: this.calculateRateAge() > 12
+            },
+            metadata: {
+                checkedAt: new Date().toISOString(),
+                source: 'HMRC',
+                status: 'VALID'
+            }
+        };
+
+        if (conversionMeta.validation.requiresRefresh) {
+            await this.refreshExchangeRates();
+            conversionMeta.exchangeRates = this.exchangeRates;
+            conversionMeta.ratesLastUpdated = this.ratesLastUpdated;
+        }
+
+        return conversionMeta;
+    }
+
+    async refreshExchangeRates() {
+        const lastUpdate = new Date(this.ratesLastUpdated);
+        const now = new Date();
+        const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60);
+
+        if (hoursSinceUpdate > 24) {
+            await this.initializeExchangeRates();
+        }
+
+        return {
+            rates: this.exchangeRates,
+            lastUpdated: this.ratesLastUpdated,
+            nextUpdate: new Date(lastUpdate.getTime() + (24 * 60 * 60 * 1000))
+        };
+    }
+
+    async convertAndTrack(amount, currency) {
+        const conversion = await this.convertToGBP(amount, currency);
+        return {
+            original: { amount, currency },
+            converted: { amount: conversion, currency: 'GBP' },
+            rate: this.exchangeRates[currency],
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    async validateAndConvertCurrency(amount, currency) {
+        try {
+            await this.refreshExchangeRates();
+            const conversion = await this.convertAndTrack(amount, currency);
+            
+            return {
+                ...conversion,
+                validation: {
+                    isValid: true,
+                    rateAge: this.calculateRateAge(),
+                    source: 'HMRC',
+                    status: 'CONVERTED'
+                },
+                metadata: {
+                    processedAt: new Date().toISOString(),
+                    exchangeRates: this.exchangeRates,
+                    ratesLastUpdated: this.ratesLastUpdated,
+                    conversionTracking: {
+                        id: crypto.randomUUID(),
+                        timestamp: new Date().toISOString(),
+                        type: 'tax_calculation'
+                    }
+                }
+            };
+        } catch (error) {
+            throw new Error(`Currency conversion failed: ${error.message}`);
+        }
+    }
+
+    calculateRateAge() {
+        const lastUpdate = new Date(this.ratesLastUpdated);
+        const now = new Date();
+        return Math.floor((now - lastUpdate) / (1000 * 60 * 60));
+    }
 }
+
+export { PlaidClient };

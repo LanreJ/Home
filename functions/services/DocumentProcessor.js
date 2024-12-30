@@ -184,7 +184,11 @@ class DocumentProcessor {
         const processors = {
             P60: () => import('./processors/P60Processor'),
             SA100: () => import('./processors/SA100Processor'),
-            SA105: () => import('./processors/SA105Processor')
+            SA105: () => import('./processors/SA105Processor'),
+            SA103: () => import('./processors/SA103Processor'),
+            BankStatement: () => import('./processors/BankStatementProcessor'),
+            Receipt: () => import('./processors/ReceiptProcessor'),
+            Dividend: () => import('./processors/DividendProcessor')
         };
 
         const processorModule = processors[documentType];
@@ -193,7 +197,34 @@ class DocumentProcessor {
         }
 
         const { default: ProcessorClass } = await processorModule();
-        return new ProcessorClass();
+        const processor = new ProcessorClass();
+        
+        return {
+            processor,
+            metadata: {
+                type: documentType,
+                processorVersion: processor.version,
+                aiEnabled: processor.useAI,
+                validations: processor.getValidationRules(),
+                timestamp: new Date().toISOString()
+            }
+        };
+    }
+
+    async validateDocument(document, type) {
+        const { processor, metadata } = await this.getProcessor(type);
+        const validation = await processor.validate(document);
+        
+        return {
+            isValid: validation.valid,
+            errors: validation.errors || [],
+            warnings: validation.warnings || [],
+            metadata: {
+                ...metadata,
+                validatedAt: new Date().toISOString(),
+                status: validation.valid ? 'VALID' : 'NEEDS_REVIEW'
+            }
+        };
     }
 }
 

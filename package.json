@@ -21,7 +21,7 @@
     "joi": "^17.4.0",
     "openai": "^4.0.0",
     "busboy": "^1.6.0",
-    "@google-cloud/secret-manager": "^5.14.0"
+    "@google-cloud/secret-manager": "^5.6.0"
   },
   "author": "",
   "license": "ISC",

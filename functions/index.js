@@ -519,6 +519,35 @@ app.post('/api/process-pdf', authenticateRequest, async (req, res) => {
     }
 });
 
+exports.plaidWebhook = functions.https.onRequest(async (req, res) => {
+    try {
+        // Validate webhook request
+        if (req.method !== 'POST') {
+            res.status(405).send('Method Not Allowed');
+            return;
+        }
+
+        // Initialize bank service
+        const bankService = new BankConnectionService();
+        await bankService.initialize();
+
+        // Process webhook
+        const result = await bankService.handleWebhook(req.body);
+
+        res.status(200).json({
+            success: true,
+            ...result
+        });
+
+    } catch (error) {
+        console.error('Plaid webhook error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Export the Express app as a v2 function
 exports.api = onRequest({
     region: "europe-west2",
@@ -647,3 +676,40 @@ async function processUploadedDocument(docId, userId) {
         throw error;
     }
 }
+
+app.post('/process-documents', authenticateRequest, async (req, res) => {
+    try {
+        const taxReturnService = new TaxReturnService(req.user.uid, '2023-24');
+        const result = await taxReturnService.processDocuments(req.files);
+
+        // Save to Firestore
+        const docRef = await admin.firestore()
+            .collection('users')
+            .doc(req.user.uid)
+            .collection('tax-returns')
+            .add({
+                documents: result.documents,
+                parsedData: result.data,
+                status: result.status,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                metadata: {
+                    taxYear: '2023-24',
+                    processedBy: 'Google Document AI',
+                    version: '1.0'
+                }
+            });
+
+        res.json({ 
+            success: true, 
+            returnId: docRef.id,
+            status: result.status,
+            nextSteps: result.nextSteps
+        });
+    } catch (error) {
+        logger.error('Tax return processing error:', error);
+        res.status(500).json({ 
+            error: error.message,
+            code: error.code || 'PROCESSING_ERROR'
+        });
+    }
+});
