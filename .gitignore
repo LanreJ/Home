@@ -51,7 +51,9 @@ firebase-debug.*.log
 # Environment Variable Files
 # ------------------------------
 .env
-.env.* 
+.env.*
+stripe.key
+stripe.webhook.key
 
 # ------------------------------
 # IDE and Editor Directories/Files

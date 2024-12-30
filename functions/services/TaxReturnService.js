@@ -1,8 +1,8 @@
-import { admin } from '../config/firebase';
-import { OpenAIService } from './OpenAIService';
-import { DocumentProcessor } from './DocumentProcessor';
-import { FormGenerator } from './FormGenerator';
-import { TaxCalculator } from './TaxCalculator';
+const admin = require('firebase-admin');
+const OpenAIService = require('./OpenAIService');
+const DocumentProcessor = require('./DocumentProcessor');
+const FormGenerator = require('./FormGenerator');
+const TaxCalculator = require('./TaxCalculator');
 
 class TaxReturnService {
     constructor(userId, taxYear) {
@@ -325,4 +325,4 @@ class TaxReturnService {
     }
 }
 
-export { TaxReturnService };
+module.exports = TaxReturnService;

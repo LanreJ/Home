@@ -14,14 +14,14 @@
     "set-cors": "gsutil cors set cors.json gs://taxstats-document-ai.firebasestorage.app"
   },
   "dependencies": {
-    "firebase-admin": "^11.0.0",
-    "firebase-functions": "^3.24.1",
-    "express": "^4.17.1",
-    "cors": "^2.8.5",
-    "joi": "^17.4.0",
-    "openai": "^4.0.0",
+    "@google-cloud/secret-manager": "^5.6.0",
     "busboy": "^1.6.0",
-    "@google-cloud/secret-manager": "^5.6.0"
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "firebase-admin": "^11.0.0",
+    "firebase-functions": "^6.2.0",
+    "joi": "^17.4.0",
+    "openai": "^4.0.0"
   },
   "author": "",
   "license": "ISC",
