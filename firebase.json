@@ -26,7 +26,13 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log"
-      ]
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" install"
+      ],
+      "environmentVariables": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "./key.json"
+      }
     },
     "emulators": {
       "functions": {
