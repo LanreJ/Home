@@ -198,4 +198,14 @@ class HMRCService {
     }
 }
 
+async function submitHMRCData(data) {
+  try {
+    // submit logic
+  } catch (err) {
+    console.error('HMRC Submission Error:', err);
+    // additional error handling
+    throw err;
+  }
+}
+
 module.exports = HMRCService;

@@ -186,4 +186,14 @@ class TaxSummaryGenerator {
     }
 }
 
+function calculateTaxSummary(incomes, allowances, benefits) {
+    // Extend logic for multi-income scenarios
+    let totalTax = 0;
+    incomes.forEach((income) => {
+        // handle multiple income types
+        totalTax += computeTaxForIncome(income, allowances, benefits);
+    });
+    return totalTax;
+}
+
 export { TaxSummaryGenerator };

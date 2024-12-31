@@ -9,6 +9,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const Stripe = require('stripe');
 const OpenAI = require('openai');
+import { SecretsService } from './services/SecretsService.js';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -27,10 +28,7 @@ app.use(cors({ origin: true }));
 app.use(bodyParser.json());
 
 // Initialize Secret Manager
-const secrets = new SecretManagerServiceClient({
-  keyFilename: './key-file.json',
-  projectId: 'taxstats-document-ai'
-});
+const secrets = new SecretsService();
 
 async function getSecretValue(secretName) {
   try {
@@ -42,5 +40,12 @@ async function getSecretValue(secretName) {
     throw new Error('Failed to access secret');
   }
 }
+
+export async function initializeSecrets() {
+    const integrationSecrets = await secrets.getIntegrationSecrets();
+    return integrationSecrets;
+}
+
+export { secrets };
 
 module.exports = { getSecretValue };

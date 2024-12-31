@@ -1,0 +1,167 @@
+bindings:
+- members:
+  - serviceAccount:summary-webhook-sa@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/aiplatform.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-artifactregistry.iam.gserviceaccount.com
+  role: roles/artifactregistry.serviceAgent
+- members:
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/bigquery.admin
+- members:
+  - serviceAccount:summary-webhook-sa@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/bigquery.dataEditor
+- members:
+  - serviceAccount:532562763606@cloudbuild.gserviceaccount.com
+  role: roles/cloudbuild.builds.builder
+- members:
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - user:robert@taxstats.co.uk
+  role: roles/cloudbuild.builds.editor
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-cloudbuild.iam.gserviceaccount.com
+  role: roles/cloudbuild.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-config.iam.gserviceaccount.com
+  role: roles/cloudconfig.serviceAgent
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  - serviceAccount:cloud-functions-sa@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - user:robert@taxstats.co.uk
+  role: roles/cloudfunctions.admin
+- members:
+  - user:robert@taxstats.co.uk
+  role: roles/cloudfunctions.developer
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  - serviceAccount:cloud-functions-sa@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:taxstats-functions@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/cloudfunctions.invoker
+- members:
+  - serviceAccount:service-532562763606@gcf-admin-robot.iam.gserviceaccount.com
+  role: roles/cloudfunctions.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@compute-system.iam.gserviceaccount.com
+  role: roles/compute.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@container-engine-robot.iam.gserviceaccount.com
+  role: roles/container.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@containerregistry.iam.gserviceaccount.com
+  role: roles/containerregistry.ServiceAgent
+- members:
+  - serviceAccount:openai-secret-accessor@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/datastore.user
+- members:
+  - serviceAccount:532562763606@cloudbuild.gserviceaccount.com
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/documentai.admin
+- members:
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:summary-webhook-sa@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/documentai.apiUser
+- members:
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - user:robert@taxstats.co.uk
+  role: roles/documentai.editor
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-prod-dai-core.iam.gserviceaccount.com
+  role: roles/documentaicore.serviceAgent
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  - serviceAccount:532562763606@cloudbuild.gserviceaccount.com
+  - serviceAccount:532562763606@cloudservices.gserviceaccount.com
+  role: roles/editor
+- members:
+  - serviceAccount:532562763606@cloudbuild.gserviceaccount.com
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/eventarc.admin
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  - serviceAccount:summary-trigger-sa@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/eventarc.eventReceiver
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-eventarc.iam.gserviceaccount.com
+  role: roles/eventarc.serviceAgent
+- members:
+  - serviceAccount:firebase-service-account@firebase-sa-management.iam.gserviceaccount.com
+  - serviceAccount:service-532562763606@gcp-sa-firebase.iam.gserviceaccount.com
+  role: roles/firebase.managementServiceAgent
+- members:
+  - serviceAccount:firebase-adminsdk-uw25b@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/firebase.sdkAdminServiceAgent
+- members:
+  - serviceAccount:firebase-adminsdk-uw25b@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/firebaseauth.admin
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-firebasemods.iam.gserviceaccount.com
+  role: roles/firebasemods.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@firebase-rules.iam.gserviceaccount.com
+  role: roles/firebaserules.system
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-firebasestorage.iam.gserviceaccount.com
+  role: roles/firebasestorage.serviceAgent
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-firestore.iam.gserviceaccount.com
+  role: roles/firestore.serviceAgent
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  - serviceAccount:532562763606@cloudbuild.gserviceaccount.com
+  role: roles/iam.securityAdmin
+- members:
+  - serviceAccount:firebase-adminsdk-uw25b@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/iam.serviceAccountTokenCreator
+- members:
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  - user:robert@taxstats.co.uk
+  role: roles/iam.serviceAccountUser
+- members:
+  - user:robert@taxstats.co.uk
+  role: roles/logging.viewer
+- members:
+  - user:robert@taxstats.co.uk
+  role: roles/owner
+- members:
+  - serviceAccount:service-532562763606@gs-project-accounts.iam.gserviceaccount.com
+  role: roles/pubsub.publisher
+- members:
+  - serviceAccount:service-532562763606@gcp-sa-pubsub.iam.gserviceaccount.com
+  role: roles/pubsub.serviceAgent
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  role: roles/run.admin
+- members:
+  - serviceAccount:summary-trigger-sa@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/run.invoker
+- members:
+  - serviceAccount:service-532562763606@serverless-robot-prod.iam.gserviceaccount.com
+  role: roles/run.serviceAgent
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  - serviceAccount:cloud-functions-sa@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:openai-secret-accessor@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:taxstats-document-ai@appspot.gserviceaccount.com
+  - serviceAccount:taxstats-functions@taxstats-document-ai.iam.gserviceaccount.com
+  role: roles/secretmanager.secretAccessor
+- members:
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:firebase-adminsdk-uw25b@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  - user:robert@taxstats.co.uk
+  role: roles/storage.admin
+- members:
+  - serviceAccount:532562763606-compute@developer.gserviceaccount.com
+  role: roles/storage.objectAdmin
+- members:
+  - serviceAccount:document-ai-service-account@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:form-parser@taxstats-document-ai.iam.gserviceaccount.com
+  - serviceAccount:openai-secret-accessor@taxstats-document-ai.iam.gserviceaccount.com
+  - user:robert@taxstats.co.uk
+  role: roles/storage.objectViewer
+etag: BwYqj4J3bRo=
+version: 1

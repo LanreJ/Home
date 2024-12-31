@@ -417,3 +417,9 @@ if (refreshTaxBtn) {
 // Ensure all async functions have proper error handling.
 // Use event delegation if dynamically adding elements (e.g., clickable file list items).
 // Keep UI responsive by providing feedback during long operations (e.g., loading indicators).
+
+document.querySelector('#submitFormButton').addEventListener('click', () => {
+  const formData = gatherFormData();
+  // Make call to updateSA100 with formData
+  // Real-time update of values
+});

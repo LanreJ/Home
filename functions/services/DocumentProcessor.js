@@ -1,13 +1,39 @@
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import * as crypto from 'crypto';
 
 class DocumentProcessor {
     constructor() {
         this.client = new DocumentProcessorServiceClient();
+        this.secretManager = new SecretManagerServiceClient();
+        this.algorithm = 'aes-256-gcm';
+    }
+
+    async getEncryptionKey() {
+        const [version] = await this.secretManager.accessSecretVersion({
+            name: 'projects/taxstats-document-ai/secrets/document-encryption-key/versions/latest'
+        });
+        return version.payload.data;
+    }
+
+    async encryptDocument(buffer) {
+        const key = await this.getEncryptionKey();
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(this.algorithm, key, iv);
+        const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+        const authTag = cipher.getAuthTag();
+        
+        return {
+            content: encrypted,
+            iv: iv,
+            authTag: authTag
+        };
     }
 
     async process(files) {
         const results = [];
         for (const file of files) {
+            console.log(`Processing file: ${file.originalname}, size: ${file.size}`);
             const result = await this.processDocument(file);
             results.push(result);
         }
@@ -16,33 +42,48 @@ class DocumentProcessor {
 
     async processDocument(file) {
         try {
+            // Encrypt file before processing
+            const encrypted = await this.encryptDocument(file.buffer);
+            
             const [result] = await this.client.processDocument({
                 name: this.processorPath,
                 document: {
-                    content: file.buffer,
+                    content: encrypted.content,
                     mimeType: file.mimetype
                 }
             });
 
             const documentType = this.detectDocumentType(result.document);
-            const processor = await this.getProcessor(documentType);
-            const processedData = await processor.process(result.document);
+            
+            // Log processing metadata without sensitive info
+            console.log({
+                documentType,
+                timestamp: new Date().toISOString(),
+                processingStatus: 'success',
+                fileMetadata: {
+                    type: file.mimetype,
+                    size: file.size,
+                    processorPath: this.processorPath
+                }
+            });
 
             return {
-                ...processedData,
+                type: documentType,
+                result: result.document,
                 metadata: {
-                    ...processedData.metadata,
-                    documentType,
-                    confidence: result.document.textStyles[0]?.confidence || 0,
-                    pageCount: result.document.pages?.length || 0,
-                    processingTime: new Date().toISOString(),
-                    filename: file.originalname,
-                    fileType: file.mimetype,
-                    fileSize: file.size
+                    encrypted: true,
+                    iv: encrypted.iv.toString('hex'),
+                    processedAt: new Date().toISOString()
                 }
             };
+
         } catch (error) {
-            throw new Error(`Document processing failed: ${error.message}`);
+            console.error('Document processing failed:', {
+                error: error.message,
+                timestamp: new Date().toISOString(),
+                fileType: file.mimetype
+            });
+            throw error;
         }
     }
 
@@ -226,6 +267,15 @@ class DocumentProcessor {
             }
         };
     }
+
+    async uploadDocument(docBuffer, metadata) {
+        console.log('Starting document upload...');
+        // Optionally reuse encryptDocument() or write a new encryption method
+        const encryptedDoc = await this.encryptDocument(docBuffer);
+
+        // Perform upload with encryptedDoc
+        console.log(`Document metadata: ${JSON.stringify(metadata)}`);
+    }
 }
 
-export { DocumentProcessor };
+export default DocumentProcessor;

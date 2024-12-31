@@ -1,11 +1,20 @@
 import { DocumentProcessor } from '../DocumentProcessor';
 import { TaxReturnService } from '../TaxReturnService';
 import { admin } from '../../config/firebase';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
 class FormProcessor {
     constructor(taxYear) {
         this.taxYear = taxYear;
         this.taxRates = this.getTaxRates(taxYear);
+        this.secretManager = new SecretManagerServiceClient();
+    }
+
+    async getProcessorId() {
+        const [version] = await this.secretManager.accessSecretVersion({
+            name: 'projects/taxstats-document-ai/secrets/PROCESSOR_ID/versions/latest'
+        });
+        return version.payload.data.toString();
     }
 
     getTaxRates(taxYear) {
@@ -432,6 +441,81 @@ class FormProcessor {
         }
         
         return forms;
+    }
+
+    validateFormInput(formData) {
+        const errors = [];
+        
+        // Required field validation
+        const requiredFields = ['taxYear', 'fullName', 'utr'];
+        requiredFields.forEach(field => {
+            if (!formData[field]) {
+                errors.push(`Missing required field: ${field}`);
+            }
+        });
+
+        // Numeric validation with range checks
+        const numericFields = [
+            { field: 'income', min: 0, max: 1000000000 },
+            { field: 'expenses', min: 0, max: 1000000000 },
+            { field: 'capitalAllowances', min: 0, max: 1000000 }
+        ];
+        
+        numericFields.forEach(({ field, min, max }) => {
+            const value = parseFloat(formData[field]);
+            if (formData[field] && isNaN(value)) {
+                errors.push(`${field} must be a number`);
+            } else if (value < min || value > max) {
+                errors.push(`${field} must be between ${min} and ${max}`);
+            }
+        });
+
+        // Tax year validation
+        const currentYear = new Date().getFullYear();
+        const taxYear = parseInt(formData.taxYear);
+        if (taxYear < currentYear - 4 || taxYear > currentYear + 1) {
+            errors.push('Invalid tax year');
+        }
+
+        // UTR format validation
+        const utrRegex = /^\d{10}$/;
+        if (!utrRegex.test(formData.utr)) {
+            errors.push('Invalid UTR format - must be 10 digits');
+        }
+
+        if (errors.length > 0) {
+            throw new Error(JSON.stringify(errors));
+        }
+
+        return true;
+    }
+
+    async updateSA100(formData) {
+        try {
+            this.validateFormInput(formData);
+            
+            // Calculate tax liability
+            const calculations = await this.calculateTaxLiability(formData);
+            
+            // Generate forms
+            const forms = await this.generateForms(formData, calculations);
+            
+            // Update database
+            await this.updateSubmissionStatus(formData.id, {
+                status: 'updated',
+                forms: forms,
+                calculations: calculations
+            });
+
+            return {
+                success: true,
+                forms: forms,
+                calculations: calculations
+            };
+        } catch (error) {
+            console.error('Error updating SA100:', error);
+            throw error;
+        }
     }
 }
 

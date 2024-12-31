@@ -1,6 +1,7 @@
-import { onRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
-import admin from 'firebase-admin';
+import { onRequest } from 'firebase-functions/v2/https';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
 import express from 'express';
@@ -8,93 +9,148 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import Stripe from 'stripe';
 import { OpenAI } from 'openai';
+import { SecretsService } from './services/SecretsService.js';
+import { readFile } from 'fs/promises';
+import { resolve } from 'path';
 
-// Environment variables
-const projectId = process.env.PROJECT_ID || 'taxstats-document-ai';
-const processorId = process.env.PROCESSOR_ID;
-const processorName = `projects/${projectId}/locations/europe-west2/processors/${processorId}`;
-
-// Initialize Firebase Admin
-admin.initializeApp();
-
-// Initialize Document AI
-const docaiClient = new DocumentProcessorServiceClient();
-
-// Initialize Express
+// Initialize Express app
 const app = express();
 app.use(cors({ origin: true }));
 app.use(bodyParser.json());
 
-// Initialize Secret Manager
-const secrets = new SecretManagerServiceClient();
+// Initialize Firebase Admin
+const serviceAccountPath = resolve(process.cwd(), 'functions/service-account.json');
+const serviceAccount = JSON.parse(await readFile(serviceAccountPath, 'utf8'));
 
-// Secret Manager helper
-async function getSecret(secretName) {
+initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+const db = getFirestore();
+
+// Health check endpoint
+app.get('/_health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Initialize Secret Manager
+const secretManager = new SecretManagerServiceClient();
+
+// Helper to get secrets with fallback
+async function getSecret(secretName, fallback = null) {
     try {
-        const name = `projects/${projectId}/secrets/${secretName}/versions/latest`;
-        const [version] = await secrets.accessSecretVersion({ name });
+        const [version] = await secretManager.accessSecretVersion({
+            name: `projects/taxstats-document-ai/secrets/${secretName}/versions/latest`
+        });
         return version.payload.data.toString();
     } catch (error) {
-        logger.error(`Error accessing secret ${secretName}:`, error);
-        throw new Error(`Failed to access secret: ${secretName}`);
+        console.error(`Error accessing secret ${secretName}:`, error);
+        return fallback;
     }
 }
 
-// Initialize clients
-let stripeClient;
-let openaiClient;
-
-(async () => {
+// Premium access middleware
+const requirePremium = async (req, res, next) => {
     try {
-        const stripeKey = await getSecret('STRIPE_SECRET_KEY');
-        stripeClient = new Stripe(stripeKey);
+        const userId = req.user.uid;
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (!userDoc.exists || !userDoc.data().isPremium) {
+            return res.status(403).json({ error: 'Premium subscription required' });
+        }
+        next();
     } catch (error) {
-        logger.error('Stripe initialization failed:', error);
+        console.error('Premium check failed:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-})();
-
-(async () => {
-    try {
-        const openaiKey = await getSecret('OPENAI_API_KEY');
-        openaiClient = new OpenAI({ apiKey: openaiKey });
-    } catch (error) {
-        logger.error('OpenAI initialization failed:', error);
-    }
-})();
-
-// Middleware: Authentication
-const authenticateRequest = async (req, res, next) => {
-    // Your authentication logic
-    next();
 };
 
-// Define your routes and functions here
-// Example:
-app.post('/process', authenticateRequest, async (req, res) => {
-    // Your processing logic
+// Initialize services
+let stripe;
+let openai;
+let docaiClient;
+let processorName;
+
+// Initialize all services
+async function initializeServices() {
+    try {
+        // Initialize Document AI
+        const projectId = process.env.PROJECT_ID || 'taxstats-document-ai';
+        const processorId = await secretsService.getSecret('PROCESSOR_ID', '937da5fa78490a0b');
+        processorName = `projects/${projectId}/locations/europe-west2/processors/${processorId}`;
+        docaiClient = new DocumentProcessorServiceClient();
+
+        // Initialize API clients
+        const { stripe: stripeKey, openai: openaiKey } = await secretsService.getIntegrationSecrets();
+        
+        if (stripeKey) stripe = new Stripe(stripeKey);
+        if (openaiKey) openai = new OpenAI({ apiKey: openaiKey });
+
+        return true;
+    } catch (error) {
+        console.error('Service initialization failed:', error);
+        return false;
+    }
+}
+
+// Initialize on startup
+await initializeServices();
+
+// API Routes with premium checks
+app.post('/process-document', requirePremium, async (req, res) => {
+    try {
+        // Document processing logic
+    } catch (error) {
+        console.error('Document processing failed:', error);
+        res.status(500).json({ error: 'Processing failed' });
+    }
 });
 
-app.post('/generate-tax-return', authenticateRequest, async (req, res) => {
-    // Your tax return generation logic
+app.post('/generate-tax-return', requirePremium, async (req, res) => {
+    try {
+        // Tax return generation logic
+    } catch (error) {
+        console.error('Tax return generation failed:', error);
+        res.status(500).json({ error: 'Generation failed' });
+    }
 });
 
-// Export Functions
+// Start server explicitly for Cloud Run
+const PORT = process.env.PORT || 8080;
+if (process.env.K_SERVICE) {
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+// Handle shutdown gracefully
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down');
+  process.exit(0);
+});
+
+// Export functions with region and invoker config
 export const api = onRequest({ 
-    region: 'europe-west2', 
-    invoker: 'public'
+    region: 'europe-west2',
+    minInstances: 1,
+    timeoutSeconds: 60,
 }, app);
 
 export const processDocument = onRequest({
     region: 'europe-west2',
     invoker: 'public'
 }, async (req, res) => {
-    // Your existing code...
+    if (!req.user?.isPremium) {
+        return res.status(403).json({ error: 'Premium required' });
+    }
+    // Document processing implementation
 });
 
 export const generateTaxReturn = onRequest({
     region: 'europe-west2',
     invoker: 'public'
 }, async (req, res) => {
-    // Your existing code...
+    if (!req.user?.isPremium) {
+        return res.status(403).json({ error: 'Premium required' });
+    }
+    // Tax return generation implementation
 });
 
