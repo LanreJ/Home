@@ -870,6 +870,89 @@
         document.getElementById('pageNum').textContent = 
             pdfDoc ? `Page ${pageNum} of ${pdfDoc.numPages}` : 'No document loaded';
     }
+
+    // Upload Document Button
+    document.getElementById('uploadButton').addEventListener('click', async () => {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please select a file first');
+            return;
+        }
+        await uploadDocument(file);
+    });
+
+    // Refresh Files Button  
+    document.getElementById('refreshButton').addEventListener('click', async () => {
+        await listFiles();
+    });
+
+    // AI Assistant Chat
+    document.getElementById('aiChatButton').addEventListener('click', () => {
+        document.getElementById('aiChatModal').style.display = 'block';
+    });
+
+    // Tax Calculator
+    document.getElementById('taxCalculatorButton').addEventListener('click', () => {
+        document.getElementById('taxCalculatorModal').style.display = 'block'; 
+    });
+
+    // Tax Return Viewer
+    document.getElementById('taxReturnButton').addEventListener('click', async () => {
+        await showTaxReturn();
+    });
+
+    // Remove duplicate pdfDoc declaration
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize buttons
+        document.getElementById('uploadBtn').addEventListener('click', handleFileUpload);
+        document.getElementById('refreshBtn').addEventListener('click', refreshFiles);
+        document.getElementById('aiChatBtn').addEventListener('click', openAIChat);
+        document.getElementById('calculatorBtn').addEventListener('click', openCalculator);
+        document.getElementById('viewerBtn').addEventListener('click', openViewer);
+    });
+
+    async function handleFileUpload() {
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput.files[0]) {
+            alert('Please select a file first');
+            return;
+        }
+        // ... rest of upload logic
+    }
+
+    async function refreshFiles() {
+        try {
+            const response = await fetch('/api/files');
+            const files = await response.json();
+            updateFileList(files);
+        } catch (error) {
+            console.error('Error refreshing files:', error);
+        }
+    }
+
+    function openAIChat() {
+        window.location.href = '/chat.html';
+    }
+
+    function openCalculator() {
+        window.location.href = '/calculator.html';
+    }
+
+    function openViewer() {
+        window.location.href = '/viewer.html';
+    }
+
+    function updateFileList(files) {
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '';
+        files.forEach(file => {
+            const li = document.createElement('li');
+            li.textContent = file.name;
+            fileList.appendChild(li);
+        });
+    }
   </script>
 </body>
 </html>

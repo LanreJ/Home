@@ -14,7 +14,7 @@
     "set-cors": "gsutil cors set cors.json gs://taxstats-document-ai.firebasestorage.app"
   },
   "dependencies": {
-    "@google-cloud/secret-manager": "^4.0.0",
+    "@google-cloud/secret-manager": "^5.6.0",
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
@@ -37,17 +37,4 @@
     "node": "18"
   },
   "private": true,
-  "env": {
-    "HMRC_CLIENT_ID": "V8Ff7DnG1XSCATKPJCQ9aMOfAEUu",
-    "HMRC_CLIENT_SECRET": "e989f2ea-d78b-4308-9dac-beaa932bf7f2",
-    "HMRC_APPLICATION_ID": "29fee1d8-8804-449d-ba48-d17b0901854e",
-    "HMRC_API_URL": "https://test-api.service.hmrc.gov.uk",
-    "PLAID_CLIENT_ID": "67702468ec5d8b0026b54869",
-    "PLAID_SANDBOX_API_KEY": "8dbf494580988e6fbce70695041e9f",
-    "PROJECT_ID": "taxstats-document-ai",
-    "PROCESSOR_ID": "937da5fa78490a0b",
-    "STRIPE_WEBHOOK_SECRET": "whsec_PwkrRcMXXdir6vaoG3TXTdNQ4rvU8fJN",
-    "STRIPE_PRICE_ID": "price_1QbjcxEmAeUZ2IYPYdX07A5K",
-    "STRIPE_PRODUCT_ID": "prod_RUj5FVkPmK0PVI"
-  }
 }

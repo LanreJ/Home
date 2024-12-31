@@ -96,3 +96,52 @@ temp/
 # ------------------------------
 *.swp
 *~
+
+# ------------------------------
+# Package Lock File
+# ------------------------------
+package-lock.json
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*
+
+# Firebase
+.firebase/
+firebase-debug.log
+ui-debug.log
+.runtimeconfig.json
+
+# Build output
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Service account keys
+*-service-account.json
+*.key.json
+docaieditor.json
+
+# Tests
+coverage/
+__tests__/
+*.test.js
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

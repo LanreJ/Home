@@ -1,14 +1,13 @@
-const functions = require('firebase-functions');
-const { onRequest } = require('firebase-functions/v2/https');
-const { logger } = require('firebase-functions');
-const admin = require('firebase-admin');
-const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
-const { DocumentProcessorServiceClient } = require('@google-cloud/documentai');
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const Stripe = require('stripe');
-const OpenAI = require('openai');
+import { onRequest } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import admin from 'firebase-admin';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import Stripe from 'stripe';
+import { OpenAI } from 'openai';
 
 // Environment variables
 const projectId = process.env.PROJECT_ID || 'taxstats-document-ai';
@@ -80,19 +79,19 @@ app.post('/generate-tax-return', authenticateRequest, async (req, res) => {
 });
 
 // Export Functions
-exports.api = onRequest({ 
+export const api = onRequest({ 
     region: 'europe-west2', 
     invoker: 'public'
 }, app);
 
-exports.processDocument = onRequest({
+export const processDocument = onRequest({
     region: 'europe-west2',
     invoker: 'public'
 }, async (req, res) => {
     // Your existing code...
 });
 
-exports.generateTaxReturn = onRequest({
+export const generateTaxReturn = onRequest({
     region: 'europe-west2',
     invoker: 'public'
 }, async (req, res) => {
