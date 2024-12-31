@@ -2,9 +2,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /uploads/{document} {
-      allow read, write: if request.auth != null;
+    // Helper functions
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
-    // Add more rules as needed
+    
+    function hasActiveSubscription(userId) {
+      return exists(/databases/$(database)/documents/subscriptions/$(userId)) &&
+        get(/databases/$(database)/documents/subscriptions/$(userId)).data.active == true;
+    }
+
+    // User documents collection
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      match /documents/{docId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && hasActiveSubscription(userId);
+      }
+    }
+
+    // Tax returns collection
+    match /taxReturns/{returnId} {
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId) && 
+                      hasActiveSubscription(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) && 
+                      hasActiveSubscription(resource.data.userId);
+      allow delete: if false;
+    }
+
+    // Bank transactions collection
+    match /transactions/{userId}/{documents=**} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && hasActiveSubscription(userId);
+    }
+
+    // Subscriptions collection
+    match /subscriptions/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;  // Only backend can modify
+    }
   }
 }

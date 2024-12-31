@@ -1,25 +1,75 @@
-// Firebase initialization
+import { initializeApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage, ref } from 'firebase/storage';
+import { DocumentManager } from './modules/DocumentManager.js';
+import { TaxFormManager } from './modules/TaxFormManager.js';
+import { AIAssistant } from './modules/AIAssistant.js';
+import { SubscriptionManager } from './modules/SubscriptionManager.js';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
-  authDomain: "taxstats-document-ai.firebaseapp.com",
-  projectId: "taxstats-document-ai",
-  storageBucket: "taxstats-document-ai.firebasestorage.app",
-  messagingSenderId: "532562763606",
-  appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
+    apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+    authDomain: "taxstats-document-ai.firebaseapp.com",
+    projectId: "taxstats-document-ai",
+    storageBucket: "taxstats-document-ai.firebasestorage.app",
+    messagingSenderId: "532562763606",
+    appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const storage = firebase.storage();
-const storageRef = storage.ref();
+// Initialize core services
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Auth state listener
-auth.onAuthStateChanged((user) => {
-  if (!user) {
-    window.location.href = '/login.html';
-    return;
-  }
+// Initialize service managers
+const documentManager = new DocumentManager(storage, db);
+const taxFormManager = new TaxFormManager(db);
+const aiAssistant = new AIAssistant();
+const subscriptionManager = new SubscriptionManager(db);
+
+// Auth state management
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    const isSubscribed = await subscriptionManager.checkSubscription(user.uid);
+    if (!isSubscribed) {
+        window.location.href = '/subscribe.html';
+        return;
+    }
+
+    // Initialize services with user context
+    await initializeServices(user.uid);
+    setupEventListeners();
+    updateUIState();
 });
+
+async function initializeServices(userId) {
+    await documentManager.initialize(userId);
+    await taxFormManager.initialize(userId);
+    await aiAssistant.initialize(userId);
+    
+    // Load existing documents and tax data
+    const documents = await documentManager.loadDocuments();
+    const taxData = await taxFormManager.loadCurrentReturn();
+    
+    updateDocumentList(documents);
+    updateTaxForm(taxData);
+}
+
+function setupEventListeners() {
+    // Document upload handling
+    document.getElementById('uploadBtn').addEventListener('click', handleDocumentUpload);
+    document.getElementById('generateBtn').addEventListener('click', handleFormGeneration);
+    document.getElementById('aiAssistBtn').addEventListener('click', toggleAIAssistant);
+    
+    // Subscribe to real-time updates
+    documentManager.subscribeToUpdates(updateDocumentList);
+    taxFormManager.subscribeToUpdates(updateTaxForm);
+}
 
 // =============================
 // Element References
@@ -272,84 +322,101 @@ if (submitReturnBtn) {
 // 4. PDF Viewer & Pagination
 // =============================
 
-let pdfDoc = null;
-let currentPage = 1;
-
-// Elements for PDF viewer
-const taxViewer = document.getElementById("taxViewer");
-const prevPageBtn = document.getElementById("prevPage");
-const nextPageBtn = document.getElementById("nextPage");
-
-/**
- * Loads a PDF document from a given URL.
- * @param {string} url - The URL of the PDF document.
- */
-async function loadPDF(url) {
-  if (!taxViewer) return;
-
-  try {
-    pdfDoc = await pdfjsLib.getDocument(url).promise;
-    currentPage = 1;
-    renderPage(currentPage);
-  } catch (error) {
-    console.error("Error loading PDF:", error);
-    taxViewer.innerHTML = "Failed to load PDF.";
-  }
-}
-
-/**
- * Renders a specific page of the loaded PDF document.
- * @param {number} pageNum - The page number to render.
- */
-async function renderPage(pageNum) {
-  if (!pdfDoc || !taxViewer) return;
-
-  try {
-    const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale: 1.5 }); // Adjust scale as needed
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport
-    };
-    
-    await page.render(renderContext).promise; // Render the page into the canvas
-    taxViewer.innerHTML = ""; // Clear previous content
-    taxViewer.appendChild(canvas); // Append the new page
-  } catch (error) {
-    console.error("Error rendering page:", error);
-    taxViewer.innerHTML = "Failed to render page.";
-  }
-}
-
-// Event listeners for pagination buttons
-if (prevPageBtn) {
-  prevPageBtn.addEventListener("click", () => {
-    if (pdfDoc && currentPage > 1) {
-      currentPage--;
-      renderPage(currentPage);
+class TaxReturnViewer {
+    constructor(container, options = {}) {
+        this.container = container;
+        this.currentPage = 1;
+        this.zoom = 1.0;
+        this.pdfDoc = null;
+        this.assistantEnabled = options.assistantEnabled || false;
+        
+        this.initializeControls();
     }
-  });
-}
 
-if (nextPageBtn) {
-  nextPageBtn.addEventListener("click", () => {
-    if (pdfDoc && currentPage < pdfDoc.numPages) {
-      currentPage++;
-      renderPage(currentPage);
+    initializeControls() {
+        this.pageControls = document.createElement('div');
+        this.pageControls.className = 'pdf-controls';
+        this.pageControls.innerHTML = `
+            <button id="prevPage" disabled>Previous</button>
+            <span id="pageNum"></span>
+            <button id="nextPage" disabled>Next</button>
+            <button id="zoomIn">+</button>
+            <button id="zoomOut">-</button>
+            <button id="download">Download PDF</button>
+        `;
+        this.container.appendChild(this.pageControls);
+
+        this.bindEvents();
     }
-  });
+
+    bindEvents() {
+        document.getElementById('prevPage').addEventListener('click', () => this.prevPage());
+        document.getElementById('nextPage').addEventListener('click', () => this.nextPage());
+        document.getElementById('zoomIn').addEventListener('click', () => this.zoomIn());
+        document.getElementById('zoomOut').addEventListener('click', () => this.zoomOut());
+        document.getElementById('download').addEventListener('click', () => this.downloadPDF());
+    }
+
+    async loadDocument(url) {
+        try {
+            this.pdfDoc = await pdfjsLib.getDocument(url).promise;
+            this.currentPage = 1;
+            await this.renderPage();
+            this.updateControls();
+        } catch (error) {
+            console.error("Error loading document:", error);
+            this.container.innerHTML = "Failed to load document.";
+        }
+    }
+
+    async renderPage() {
+        try {
+            const page = await this.pdfDoc.getPage(this.currentPage);
+            const viewport = page.getViewport({ scale: this.zoom });
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+
+            this.container.querySelector('.pdf-content')?.remove();
+            canvas.className = 'pdf-content';
+            this.container.appendChild(canvas);
+            
+            this.updatePageNumber();
+        } catch (error) {
+            console.error("Error rendering page:", error);
+            this.container.innerHTML = "Failed to render page.";
+        }
+    }
+
+    updateControls() {
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        
+        prevBtn.disabled = this.currentPage <= 1;
+        nextBtn.disabled = this.currentPage >= this.pdfDoc.numPages;
+    }
+
+    updatePageNumber() {
+        document.getElementById('pageNum').textContent = 
+            `Page ${this.currentPage} of ${this.pdfDoc.numPages}`;
+    }
+
+    async downloadPDF() {
+        // Implementation for PDF download
+    }
 }
 
-// Example: Load a default PDF on page load or based on selected file
-window.onload = async () => {
-  await refreshFiles(); // Load the file list
-  // Optionally, load a default PDF or wait for user interaction
-};
+// Initialize viewer
+const taxViewer = new TaxReturnViewer(document.getElementById('taxViewer'), {
+    assistantEnabled: true
+});
 
 // =============================
 // 5. Logout with Enhanced Error Handling

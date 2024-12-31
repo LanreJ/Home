@@ -1,7 +1,7 @@
 {
-  "name": "functions",
+  "name": "taxstats-ai",
   "version": "1.0.0",
-  "description": "Cloud Functions for Firebase",
+  "description": "UK Tax Return AI Assistant",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -18,13 +18,14 @@
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "firebase-admin": "^11.0.0",
-    "firebase-functions": "^4.0.0",
+    "firebase-admin": "^11.11.0",
+    "firebase-functions": "^4.5.0",
     "joi": "^17.4.0",
     "openai": "^4.3.0",
     "@google-cloud/documentai": "^4.0.0",
     "body-parser": "^1.20.2",
-    "stripe": "^10.12.0"
+    "stripe": "^10.12.0",
+    "axios": "^1.6.2"
   },
   "author": "",
   "license": "ISC",
@@ -36,5 +37,5 @@
   "engines": {
     "node": "18"
   },
-  "private": true,
+  "private": true
 }

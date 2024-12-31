@@ -12,7 +12,8 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "jest"
   },
   "dependencies": {
     "@google-cloud/documentai": "^4.1.0",
@@ -24,5 +25,8 @@
     "firebase-functions": "^6.2.0",
     "openai": "^4.3.0",
     "stripe": "^10.17.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }

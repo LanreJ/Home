@@ -1,23 +1,28 @@
+import { getStorage } from 'firebase-admin/storage';
+import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
+import { OpenAI } from 'openai';
+import crypto from 'crypto';
+
 const admin = require('firebase-admin');
 const OpenAIService = require('./OpenAIService');
 const DocumentProcessor = require('./DocumentProcessor');
 const FormGenerator = require('./FormGenerator');
 const TaxCalculator = require('./TaxCalculator');
 
-class TaxReturnService {
-    constructor(userId, taxYear) {
+export class TaxReturnService {
+    constructor(db, openai, userId, taxYear) {
+        this.db = db;
+        this.storage = getStorage();
+        this.openai = openai;
         this.userId = userId;
         this.taxYear = taxYear;
-        this.openAI = new OpenAIService();
-        this.docProcessor = new DocumentProcessor();
-        this.formGenerator = new FormGenerator();
-        this.taxCalculator = new TaxCalculator();
+        this.docaiClient = new DocumentProcessorServiceClient();
     }
 
     async processReturn(files) {
         try {
             await this.updateProgress('PROCESSING', 0);
-            await this.validateSubscription(this.userId);
+            await this.checkSubscription(this.userId);
 
             // Store and process documents
             const storedFiles = await Promise.all(
@@ -79,9 +84,8 @@ class TaxReturnService {
         }
     }
 
-    async validateSubscription(userId) {
-        const subscription = await admin.firestore()
-            .collection('subscriptions')
+    async checkSubscription(userId) {
+        const subscription = await this.db.collection('subscriptions')
             .doc(userId)
             .get();
         
@@ -99,50 +103,42 @@ class TaxReturnService {
             const docType = await this.detectDocumentType(file);
             const filename = `${docType}-${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
             const path = `users/${this.userId}/documents/${this.taxYear}/${filename}`;
-            
-            // Scan and process file
-            await this.scanFile(file.buffer);
-            const aiResult = await this.processWithDocumentAI(file);
-            
-            // Store in Firebase with enhanced metadata
-            const bucket = admin.storage().bucket();
-            await bucket.file(path).save(file.buffer, {
+
+            // Store file with encryption
+            const bucket = this.storage.bucket();
+            await bucket.upload(file.path, {
+                destination: path,
                 metadata: {
                     contentType: file.mimetype,
                     metadata: {
-                        originalName: file.originalname,
-                        uploadedAt: new Date().toISOString(),
-                        userId: this.userId,
+                        docType,
                         taxYear: this.taxYear,
-                        fileSize: file.size,
-                        documentType: docType,
-                        hashSum: crypto.createHash('sha256').update(file.buffer).digest('hex'),
-                        aiProcessed: true,
-                        aiConfidence: aiResult.confidence,
-                        classification: aiResult.classification,
-                        extractedData: JSON.stringify(aiResult.extractedData)
+                        processed: false
                     }
                 },
-                encryptionKey: this.getEncryptionKey(this.userId)
+                encryptionKey: await this.getEncryptionKey()
             });
-            
-            // Log document upload with enhanced tracking
-            await this.logDocumentUpload(path, file, aiResult);
-            
-            return {
-                path,
-                metadata: {
-                    contentType: file.mimetype,
-                    uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+            // Process with Document AI
+            const result = await this.processWithDocumentAI(file);
+
+            // Store metadata
+            await this.db.collection('documents')
+                .add({
+                    userId: this.userId,
+                    taxYear: this.taxYear,
+                    path,
+                    docType,
+                    metadata: result.metadata,
                     status: 'PROCESSED',
-                    aiStatus: aiResult.status,
-                    ready: true
-                },
-                extractedData: aiResult.extractedData
-            };
+                    createdAt: new Date()
+                });
+
+            return { path, docType, metadata: result.metadata };
+
         } catch (error) {
-            await this.logError(error);
-            throw new Error(`Document storage failed: ${error.message}`);
+            console.error('Document storage failed:', error);
+            throw new Error('Failed to store document');
         }
     }
 
