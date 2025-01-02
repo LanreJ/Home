@@ -15,11 +15,17 @@ const { PassThrough } = require('stream');
 const { calculateTax } = require('./services/TaxCalculator');
 const { generateSA100PDF } = require('./services/FormGenerator');
 
+const FIREBASE_STORAGE_BUCKET = functions.config().firebase.storage_bucket;
+const OPENAI_API_KEY = functions.config().openai.api_key;
+const GOOGLE_PROJECT_ID = functions.config().google.project_id;
+const DOCUMENTAI_PROCESSOR_ID = functions.config().documentai.processor_id;
+// ... other variables
+
 // Initialize Firebase Admin without service-account.json
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.applicationDefault(),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    storageBucket: FIREBASE_STORAGE_BUCKET,
   });
 }
 
@@ -30,7 +36,7 @@ app.use(express.json());
 
 // Initialize OpenAI
 const openaiConfig = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(openaiConfig);
 
@@ -118,8 +124,8 @@ app.post('/upload', authenticate, upload.array('documents'), async (req, res) =>
       // Process with Google Document AI
       const documentProcessorClient = new DocumentProcessorServiceClient();
 
-      const projectId = functions.config().google.project_id;
-      const processorId = functions.config().documentai.processor_id;
+      const projectId = GOOGLE_PROJECT_ID;
+      const processorId = DOCUMENTAI_PROCESSOR_ID;
 
       const name = `projects/${projectId}/locations/${location}/processors/${processorId}`;
 
@@ -684,7 +690,7 @@ app.post('/upload', upload.single('document'), async (req, res) => {
       // Process the document with Google Document AI
       const documentProcessor = new DocumentProcessorServiceClient();
       const [result] = await documentProcessor.processDocument({
-        name: `projects/${functions.config().google.project_id}/locations/us/processors/${functions.config().documentai.processor_id}`,
+        name: `projects/${GOOGLE_PROJECT_ID}/locations/us/processors/${DOCUMENTAI_PROCESSOR_ID}`,
         rawDocument: {
           content: file.buffer,
           mimeType: file.mimetype,
@@ -910,5 +916,21 @@ app.post('/generate-form', async (req, res) => {
 
 // Export the Express app as a Firebase Function in europe-west2
 exports.app = functions.region('europe-west2').https.onRequest(app);
+
+const Busboy = require('busboy');
+
+app.post('/upload', (req, res) => {
+  const busboy = new Busboy({ headers: req.headers });
+
+  busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
+    // Handle file upload
+  });
+
+  busboy.on('finish', () => {
+    res.status(200).json({ message: 'Upload complete' });
+  });
+
+  return req.pipe(busboy);
+});
 
 
