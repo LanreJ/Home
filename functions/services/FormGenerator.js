@@ -1,3 +1,5 @@
+const PDFDocument = require('pdfkit');
+
 class FormGenerator {
     constructor(taxYear) {
         this.sa100 = new SA100Form(taxYear);
@@ -95,4 +97,31 @@ class FormGenerator {
     }
 }
 
-module.exports = FormGenerator;
+const generateSA100PDF = (userData, parsedData) => {
+  const doc = new PDFDocument();
+  const buffers = [];
+
+  doc.on('data', buffers.push.bind(buffers));
+  doc.on('end', () => {});
+
+  // Add content to PDF based on userData and parsedData
+  doc.fontSize(20).text('SA100 Tax Form', { align: 'center' });
+  doc.moveDown();
+
+  // Example: Personal Information
+  doc.fontSize(12).text(`Name: ${userData.name}`);
+  doc.text(`Address: ${userData.address}`);
+  doc.text(`Income: ${userData.income}`);
+  doc.text(`Deductions: ${userData.deductions}`);
+  doc.text(`Tax Liability: ${userData.taxLiability}`);
+  // Add more sections as needed
+
+  doc.end();
+
+  return Buffer.concat(buffers);
+};
+
+module.exports = {
+  FormGenerator,
+  generateSA100PDF,
+};

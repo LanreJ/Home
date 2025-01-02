@@ -1,41 +1,21 @@
 {
-    "hosting": {
-      "public": "public",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
-      ],
-      "rewrites": [
-        {
-          "source": "/api/**",
-          "function": "api"
-        },
-        {
-          "source": "**",
-          "destination": "/index.html"
-        }
-      ]
-    },
-    "functions": {
-      "source": "functions",
-      "region": "europe-west2",
-      "build": {
-        "environmentVariables": {
-          "PROJECT_ID": "taxstats-document-ai",
-          "PROCESSOR_ID": "937da5fa78490a0b"
-        }
+  "functions": {
+    "source": "functions",
+    "region": "europe-west2"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "function": "app",
+        "region": "europe-west2"
       }
-    },
-    "emulators": {
-      "functions": {
-        "port": 5001
-      },
-      "hosting": {
-        "port": 5000
-      },
-      "ui": {
-        "enabled": true
-      }
-    }
+    ]
   }
+}

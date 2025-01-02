@@ -1,11 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage, ref } from 'firebase/storage';
+import { getStorage } from 'firebase/storage';
 import { DocumentManager } from './modules/DocumentManager.js';
 import { TaxFormManager } from './modules/TaxFormManager.js';
 import { AIAssistant } from './modules/AIAssistant.js';
 import { SubscriptionManager } from './modules/SubscriptionManager.js';
+import { BankManager } from './modules/BankManager.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
@@ -16,7 +17,7 @@ const firebaseConfig = {
     appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
 };
 
-// Initialize core services
+// Initialize Firebase and services
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -27,6 +28,18 @@ const documentManager = new DocumentManager(storage, db);
 const taxFormManager = new TaxFormManager(db);
 const aiAssistant = new AIAssistant();
 const subscriptionManager = new SubscriptionManager(db);
+const bankManager = new BankManager();
+
+// UI Elements
+const elements = {
+    upload: document.getElementById('uploadBtn'),
+    bankConnect: document.getElementById('connectBankBtn'),
+    aiChat: document.getElementById('aiChatBtn'),
+    saveForm: document.getElementById('saveFormBtn'),
+    submitForm: document.getElementById('submitFormBtn'),
+    downloadPdf: document.getElementById('downloadPdfBtn'),
+    progress: document.getElementById('progressIndicator')
+};
 
 // Auth state management
 onAuthStateChanged(auth, async (user) => {
@@ -35,40 +48,206 @@ onAuthStateChanged(auth, async (user) => {
         return;
     }
 
-    const isSubscribed = await subscriptionManager.checkSubscription(user.uid);
-    if (!isSubscribed) {
-        window.location.href = '/subscribe.html';
-        return;
-    }
+    try {
+        // Check subscription
+        const isSubscribed = await subscriptionManager.checkSubscription(user.uid);
+        if (!isSubscribed) {
+            window.location.href = '/subscribe.html';
+            return;
+        }
 
-    // Initialize services with user context
-    await initializeServices(user.uid);
-    setupEventListeners();
-    updateUIState();
+        // Initialize components
+        await initializeComponents(user.uid);
+        setupEventListeners();
+        updateProgress();
+    } catch (error) {
+        console.error('Dashboard initialization failed:', error);
+    }
 });
 
-async function initializeServices(userId) {
-    await documentManager.initialize(userId);
-    await taxFormManager.initialize(userId);
-    await aiAssistant.initialize(userId);
+async function initializeComponents(userId) {
+    await Promise.all([
+        documentManager.initialize(userId),
+        taxFormManager.initialize(userId),
+        aiAssistant.initialize(userId),
+        bankManager.initialize(userId)
+    ]);
     
-    // Load existing documents and tax data
-    const documents = await documentManager.loadDocuments();
-    const taxData = await taxFormManager.loadCurrentReturn();
-    
+    await loadInitialData();
+}
+
+async function loadInitialData() {
+    const [documents, bankAccounts, taxForm] = await Promise.all([
+        documentManager.getDocuments(),
+        bankManager.getAccounts(),
+        taxFormManager.getCurrentForm()
+    ]);
+
     updateDocumentList(documents);
-    updateTaxForm(taxData);
+    updateBankAccounts(bankAccounts);
+    updateTaxForm(taxForm);
 }
 
 function setupEventListeners() {
-    // Document upload handling
-    document.getElementById('uploadBtn').addEventListener('click', handleDocumentUpload);
-    document.getElementById('generateBtn').addEventListener('click', handleFormGeneration);
-    document.getElementById('aiAssistBtn').addEventListener('click', toggleAIAssistant);
+    elements.upload.addEventListener('click', handleDocumentUpload);
+    elements.bankConnect.addEventListener('click', handleBankConnection);
+    elements.aiChat.addEventListener('click', toggleAIChat);
+    elements.saveForm.addEventListener('click', handleFormSave);
+    elements.submitForm.addEventListener('click', handleFormSubmit);
+    elements.downloadPdf.addEventListener('click', handlePdfDownload);
+}
+
+// Event Handlers
+async function handleDocumentUpload(event) {
+    try {
+        const files = event.target.files;
+        showLoader('Uploading documents...');
+        
+        for (const file of files) {
+            await documentManager.uploadAndProcess(file);
+        }
+        
+        updateProgress();
+    } catch (error) {
+        showError('Document upload failed');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function handleBankConnection() {
+    // Implement bank connection logic
+}
+
+function toggleAIChat() {
+    const aiChatModal = document.getElementById('aiChatModal');
+    aiChatModal.style.display = aiChatModal.style.display === 'none' ? 'block' : 'none';
+}
+
+async function handleFormSave() {
+    const formData = gatherFormData();
+    await taxFormManager.saveDraft(formData);
+    alert('Draft saved successfully');
+}
+
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    const formData = gatherFormData();
     
-    // Subscribe to real-time updates
-    documentManager.subscribeToUpdates(updateDocumentList);
-    taxFormManager.subscribeToUpdates(updateTaxForm);
+    try {
+        showLoader('Submitting tax return...');
+        
+        if (!await validateFormData(formData)) {
+            return;
+        }
+
+        const aiSuggestions = await aiAssistant.reviewForm(formData);
+        if (aiSuggestions.hasWarnings) {
+            if (!await confirmSubmission(aiSuggestions.warnings)) {
+                return;
+            }
+        }
+
+        const result = await taxFormManager.submitReturn(formData);
+        showSuccess('Tax return submitted successfully');
+        updateProgress();
+        
+        if (result.downloadUrl) {
+            offerDownload(result.downloadUrl);
+        }
+
+    } catch (error) {
+        console.error('Submission failed:', error);
+        showError('Failed to submit tax return');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function handlePdfDownload() {
+    const pdfUrl = await taxFormManager.generatePDF();
+    window.open(pdfUrl, '_blank');
+}
+
+function gatherFormData() {
+    const formData = {};
+    const form = document.querySelector('#taxForm');
+    const inputs = form.querySelectorAll('input, select, textarea');
+    
+    inputs.forEach(input => {
+        if (input.type === 'checkbox') {
+            formData[input.name] = input.checked;
+        } else if (input.type === 'file') {
+            formData[input.name] = input.files;
+        } else {
+            formData[input.name] = input.value;
+        }
+    });
+
+    return formData;
+}
+
+async function validateFormData(formData) {
+    try {
+        const validation = await taxFormManager.validateForm(formData);
+        if (!validation.isValid) {
+            showValidationErrors(validation.errors);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Validation failed:', error);
+        showError('Form validation failed');
+        return false;
+    }
+}
+
+function updateDocumentList(documents) {
+    const documentList = document.getElementById('documentList');
+    documentList.innerHTML = '';
+    documents.forEach(doc => {
+        const docItem = document.createElement('div');
+        docItem.className = 'document-item';
+        docItem.textContent = doc.fileName;
+        documentList.appendChild(docItem);
+    });
+}
+
+function updateTaxForm(taxData) {
+    const formContent = document.getElementById('formContent');
+    formContent.innerHTML = '';
+    Object.entries(taxData.fields).forEach(([field, value]) => {
+        const input = document.createElement('input');
+        input.name = field;
+        input.value = value;
+        formContent.appendChild(input);
+    });
+}
+
+function updateProgress() {
+    const progress = calculateProgress();
+    const progressBar = document.getElementById('progressIndicator');
+    progressBar.style.width = `${progress}%`;
+    
+    document.querySelectorAll('.step').forEach(step => {
+        const stepValue = step.dataset.step;
+        step.classList.toggle('active', progress >= getStepThreshold(stepValue));
+    });
+}
+
+function calculateProgress() {
+    const steps = {
+        documents: () => documentManager.hasRequiredDocuments(),
+        bank: () => bankManager.isConnected(),
+        review: () => taxFormManager.isFormComplete(),
+        submit: () => taxFormManager.isSubmitted()
+    };
+
+    const completedSteps = Object.values(steps)
+        .filter(check => check())
+        .length;
+
+    return (completedSteps / Object.keys(steps).length) * 100;
 }
 
 // =============================
@@ -76,7 +255,6 @@ function setupEventListeners() {
 // =============================
 
 // File Upload and Refresh Elements
-const uploadBtn = document.getElementById("uploadBtn");     // Button to trigger file upload
 const refreshBtn = document.getElementById("refreshBtn");   // Button to refresh the file list
 const fileListEl = document.getElementById("fileList");     // Element to display the list of files
 
@@ -443,38 +621,72 @@ if (logoutBtn) {
 // 6. Tax Calculator (Optional Enhancement)
 // =============================
 
-if (refreshTaxBtn) {
-  refreshTaxBtn.addEventListener("click", () => {
-    // Retrieve values from input fields (ensure these exist in your HTML)
-    const incomeInput = document.getElementById("incomeInput");
-    const allowancesInput = document.getElementById("allowancesInput");
-    const expensesInput = document.getElementById("expensesInput");
-
-    // Elements to display the calculated values
-    const taxLiabilityEl = document.getElementById("taxLiability");
-    const incomeEl = document.getElementById("income");
-    const allowancesEl = document.getElementById("allowances");
-    const expensesEl = document.getElementById("expenses");
-    const liabilityEl = document.getElementById("liability");
-
-    if (incomeInput && allowancesInput && expensesInput && taxLiabilityEl && incomeEl && allowancesEl && expensesEl && liabilityEl) {
-      const income = parseFloat(incomeInput.value) || 0;
-      const allowances = parseFloat(allowancesInput.value) || 0;
-      const expenses = parseFloat(expensesInput.value) || 0;
-      const liability = income - allowances - expenses;
-
-      taxLiabilityEl.textContent = `£${liability > 0 ? liability : 0}`;
-      incomeEl.textContent = `£${income}`;
-      allowancesEl.textContent = `£${allowances}`;
-      expensesEl.textContent = `£${expenses}`;
-      liabilityEl.textContent = `£${liability > 0 ? liability : 0}`;
-
-      alert("Tax calculation refreshed!");
-    } else {
-      console.error("Tax calculator elements not found.");
-      alert("Failed to refresh tax calculations. Please check the form.");
+class TaxCalculator {
+    constructor() {
+        this.taxBands = {
+            '2023-24': [
+                { threshold: 12570, rate: 0 },
+                { threshold: 50270, rate: 0.20 },
+                { threshold: 125140, rate: 0.40 },
+                { threshold: Infinity, rate: 0.45 }
+            ]
+        };
     }
-  });
+
+    calculateTax(income, allowances = 0, expenses = 0) {
+        const taxableIncome = Math.max(0, income - allowances - expenses);
+        let remainingIncome = taxableIncome;
+        let totalTax = 0;
+        let previousThreshold = 0;
+
+        this.taxBands['2023-24'].forEach(band => {
+            const taxableInBand = Math.min(
+                remainingIncome,
+                band.threshold - previousThreshold
+            );
+            totalTax += taxableInBand * band.rate;
+            remainingIncome -= taxableInBand;
+            previousThreshold = band.threshold;
+        });
+
+        return {
+            taxableIncome,
+            totalTax: Math.round(totalTax * 100) / 100
+        };
+    }
+}
+
+if (refreshTaxBtn) {
+    const calculator = new TaxCalculator();
+    
+    refreshTaxBtn.addEventListener("click", () => {
+        const income = parseFloat(incomeInput.value) || 0;
+        const allowances = parseFloat(allowancesInput.value) || 0;
+        const expenses = parseFloat(expensesInput.value) || 0;
+
+        const results = calculator.calculateTax(income, allowances, expenses);
+
+        // Update display
+        taxLiabilityEl.textContent = `£${results.totalTax.toLocaleString()}`;
+        incomeEl.textContent = `£${income.toLocaleString()}`;
+        allowancesEl.textContent = `£${allowances.toLocaleString()}`;
+        expensesEl.textContent = `£${expenses.toLocaleString()}`;
+        liabilityEl.textContent = `£${results.taxableIncome.toLocaleString()}`;
+
+        // Save to Firestore
+        if (auth.currentUser) {
+            db.collection('users')
+                .doc(auth.currentUser.uid)
+                .collection('calculations')
+                .add({
+                    income,
+                    allowances,
+                    expenses,
+                    taxLiability: results.totalTax,
+                    timestamp: new Date()
+                });
+        }
+    });
 }
 
 // =============================
@@ -489,4 +701,672 @@ document.querySelector('#submitFormButton').addEventListener('click', () => {
   const formData = gatherFormData();
   // Make call to updateSA100 with formData
   // Real-time update of values
+});
+
+async function initializeDashboard() {
+    const components = {
+        form: document.querySelector('#taxForm'),
+        submitBtn: document.querySelector('#submitFormButton'),
+        progressBar: document.querySelector('#progressBar'),
+        uploadArea: document.querySelector('#uploadArea'),
+        aiChat: document.querySelector('#aiChat')
+    };
+
+    // Initialize form handlers
+    components.form.addEventListener('input', async (e) => {
+        const field = e.target;
+        if (field.dataset.validate) {
+            const validation = await aiAssistant.validateField(
+                field.name, 
+                field.value,
+                gatherFormData()
+            );
+            updateFieldStatus(field, validation);
+        }
+    });
+
+    // Submit handler
+    components.submitBtn.addEventListener('click', async () => {
+        try {
+            components.submitBtn.disabled = true;
+            showLoader('Submitting tax return...');
+            
+            const formData = gatherFormData();
+            const validation = await taxFormManager.validateForm(formData);
+            
+            if (!validation.isValid) {
+                throw new Error(validation.errors.join('\n'));
+            }
+            
+            await taxFormManager.submitReturn(formData);
+            showSuccess('Tax return submitted successfully');
+            
+        } catch (error) {
+            showError(`Submission failed: ${error.message}`);
+        } finally {
+            components.submitBtn.disabled = false;
+            hideLoader();
+        }
+    });
+
+    // Document upload handler
+    components.uploadArea.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        try {
+            const files = Array.from(e.dataTransfer.files);
+            showLoader('Processing documents...');
+            
+            for (const file of files) {
+                await documentManager.uploadAndProcess(file);
+            }
+            
+            updateProgress();
+        } catch (error) {
+            showError(`Upload failed: ${error.message}`);
+        } finally {
+            hideLoader();
+        }
+    });
+
+    // AI chat handler
+    components.aiChat.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const query = e.target.query.value;
+        try {
+            const response = await aiAssistant.processQuery(
+                query,
+                await documentManager.getDocuments(),
+                await taxFormManager.getCurrentData()
+            );
+            appendChatMessage(response);
+        } catch (error) {
+            showError(`AI response failed: ${error.message}`);
+        }
+    });
+}
+
+function gatherFormData() {
+    const form = document.querySelector('#taxForm');
+    const formData = new FormData(form);
+    return Object.fromEntries(formData.entries());
+}
+
+function updateFieldStatus(field, validation) {
+    field.classList.toggle('invalid', !validation.isValid);
+    field.setCustomValidity(validation.message || '');
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', initializeDashboard);
+
+// Document Upload
+const documentUpload = document.getElementById('document-upload');
+const uploadBtn = document.getElementById('upload-btn');
+
+uploadBtn.addEventListener('click', async () => {
+  const files = documentUpload.files;
+  if (files.length === 0) {
+    alert('Please select at least one document to upload.');
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    alert('User not authenticated.');
+    return;
+  }
+
+  const userId = user.uid;
+
+  const formData = new FormData();
+  formData.append('userId', userId);
+  for (let file of files) {
+    formData.append('documents', file);
+  }
+
+  try {
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      alert('Documents uploaded and processed successfully.');
+      console.log(result.documents);
+      // Optionally, update UI with parsed data
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Upload Error:', error);
+    alert('Failed to upload documents.');
+  }
+});
+
+// Plaid Elements (Using Plaid Link Token)
+const subscribeBtn = document.getElementById('subscribe-btn');
+const stripePublicKey = 'YOUR_STRIPE_PUBLIC_KEY'; // Replace with your Stripe public key
+let stripeInstance;
+
+// Initialize Stripe
+const initializeStripe = () => {
+  stripeInstance = Stripe(stripePublicKey);
+};
+
+// Stripe Subscription
+subscribeBtn.addEventListener('click', async () => {
+  try {
+    const user = auth.currentUser;
+    const idToken = await user.getIdToken();
+
+    // Create Stripe Checkout Session
+    const response = await fetch('/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ priceId: 'price_1QbjcxEmAeUZ2IYPYdX07A5K' }) // Replace with your actual Price ID
+    });
+
+    const session = await response.json();
+
+    if (response.ok) {
+      // Redirect to Stripe Checkout
+      const result = await stripeInstance.redirectToCheckout({ sessionId: session.id });
+      if (result.error) {
+        alert(result.error.message);
+      }
+    } else {
+      alert(`Error: ${session.error}`);
+    }
+  } catch (error) {
+    console.error('Stripe Subscription Error:', error);
+    alert('Failed to initiate subscription.');
+  }
+});
+
+// Initialize Stripe on Page Load
+window.onload = () => {
+  initializeStripe();
+};
+
+// Plaid Link Initialization
+const initializePlaid = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/plaid/link-token', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${idToken}`
+      },
+      params: { userId: user.uid }
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const handler = Plaid.create({
+        token: data.linkToken,
+        onSuccess: async (publicToken, metadata) => {
+          // Exchange publicToken for accessToken via backend
+          const exchangeResponse = await fetch('/plaid/exchange-token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ publicToken })
+          });
+
+          const exchangeData = await exchangeResponse.json();
+
+          if (exchangeResponse.ok) {
+            const accessToken = exchangeData.accessToken;
+            // Save accessToken securely, associate with user
+            // Optionally, fetch transactions immediately
+          } else {
+            alert(`Error: ${exchangeData.error}`);
+          }
+        },
+        onExit: (err, metadata) => {
+          if (err) {
+            console.error('Plaid Link Error:', err);
+            alert('Failed to complete Plaid Link.');
+          }
+        },
+      });
+
+      handler.open();
+    } else {
+      alert(`Error: ${data.error}`);
+    }
+  } catch (error) {
+    console.error('Plaid Initialization Error:', error);
+    alert('Failed to initialize Plaid.');
+  }
+};
+
+// Example Button to Initialize Plaid Link
+const plaidLinkBtn = document.createElement('button');
+plaidLinkBtn.textContent = 'Link Bank Account';
+plaidLinkBtn.addEventListener('click', initializePlaid);
+aiSection.appendChild(plaidLinkBtn);
+
+// Tax Form Elements
+const taxFormSection = document.getElementById('tax-form-section');
+const taxFormDiv = document.getElementById('tax-form');
+const submitFormBtn = document.getElementById('submit-form-btn');
+const downloadPdfBtn = document.getElementById('download-pdf-btn');
+
+// Function to Generate Tax Form
+const generateTaxForm = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/generate-tax-form', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      const taxForm = result.taxForm;
+      renderTaxForm(taxForm);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Tax Form Generation Error:', error);
+    alert('Failed to generate tax form.');
+  }
+};
+
+// Function to Render Tax Form
+const renderTaxForm = (taxForm) => {
+  taxFormDiv.innerHTML = ''; // Clear existing form
+
+  // Personal Details
+  const personalDetails = taxForm.personalDetails;
+  const personalDiv = document.createElement('div');
+  personalDiv.innerHTML = `
+    <h3>Personal Details</h3>
+    <p><strong>Name:</strong> ${personalDetails.name}</p>
+    <p><strong>Address:</strong> ${personalDetails.address}</p>
+    <p><strong>UTR:</strong> ${personalDetails.utr}</p>
+  `;
+  taxFormDiv.appendChild(personalDiv);
+
+  // Income
+  const income = taxForm.income;
+  const incomeDiv = document.createElement('div');
+  incomeDiv.innerHTML = `
+    <h3>Income</h3>
+    <p><strong>Employment:</strong> £${income.employment}</p>
+    <p><strong>Self-Employment:</strong> £${income.selfEmployment}</p>
+    <p><strong>Interest:</strong> £${income.interest}</p>
+    ${income.dividends ? `<p><strong>Dividends:</strong> £${income.dividends}</p>` : ''}
+  `;
+  taxFormDiv.appendChild(incomeDiv);
+
+  // Deductions
+  const deductions = taxForm.deductions;
+  const deductionsDiv = document.createElement('div');
+  deductionsDiv.innerHTML = `
+    <h3>Deductions</h3>
+    <p><strong>Expenses:</strong> £${deductions.expenses}</p>
+    <p><strong>Allowances:</strong> £${deductions.allowances}</p>
+  `;
+  taxFormDiv.appendChild(deductionsDiv);
+
+  // Add more sections as needed
+};
+
+// Submit Tax Form to HMRC
+submitFormBtn.addEventListener('click', async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const idToken = await user.getIdToken();
+
+    // Fetch the latest tax form
+    const taxFormsSnapshot = await db.collection('users').doc(user.uid).collection('taxForms')
+      .orderBy('generatedAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (taxFormsSnapshot.empty) {
+      alert('No tax form found.');
+      return;
+    }
+
+    const taxFormData = taxFormsSnapshot.docs[0].data().taxForm;
+
+    // Submit to HMRC
+    const response = await fetch('/hmrc/submit-tax-form', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ taxForm: taxFormData })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      alert('Tax form submitted successfully.');
+      console.log('Submission Status:', result.status);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Tax Form Submission Error:', error);
+    alert('Failed to submit tax form.');
+  }
+});
+
+// Download Tax Form as PDF
+downloadPdfBtn.addEventListener('click', async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Fetch the latest tax form
+    const taxFormsSnapshot = await db.collection('users').doc(user.uid).collection('taxForms')
+      .orderBy('generatedAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (taxFormsSnapshot.empty) {
+      alert('No tax form found.');
+      return;
+    }
+
+    const taxFormData = taxFormsSnapshot.docs[0].data().taxForm;
+
+    // Convert tax form JSON to PDF using PDFKit on the server
+    // Alternatively, implement client-side PDF generation using libraries like jsPDF
+
+    alert('Download feature to be implemented.');
+  } catch (error) {
+    console.error('PDF Download Error:', error);
+    alert('Failed to download tax form.');
+  }
+});
+
+// Call generateTaxForm on page load or when appropriate
+// Example: Generate form after document upload
+uploadBtn.addEventListener('click', async () => {
+  // After successful upload, generate tax form
+  // Assuming documents have been processed and necessary data is available
+  generateTaxForm();
+});
+
+// Function to Check Subscription Status
+const checkSubscription = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/check-subscription', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${idToken}`
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      if (result.isSubscribed) {
+        // Show premium features
+        aiSection.style.display = 'block';
+        calculatorSection.style.display = 'block';
+        taxFormSection.style.display = 'block';
+        subscriptionSection.style.display = 'none';
+      } else {
+        // Hide premium features and show subscription prompt
+        aiSection.style.display = 'none';
+        calculatorSection.style.display = 'none';
+        taxFormSection.style.display = 'none';
+        subscriptionSection.style.display = 'block';
+      }
+    } else {
+      console.error('Subscription Check Error:', result.error);
+    }
+  } catch (error) {
+    console.error('Check Subscription Error:', error);
+  }
+};
+
+// Route to Check Subscription Status on Backend
+// Add this route to `functions/index.js`
+
+/*
+// filepath: /workspaces/Home/functions/index.js
+
+app.get('/check-subscription', authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const userDoc = await db.collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const subscription = userDoc.data().subscription;
+    const isSubscribed = subscription && subscription.status === 'active';
+
+    return res.status(200).json({ isSubscribed });
+  } catch (error) {
+    console.error('Check Subscription Error:', error);
+    return res.status(500).json({ error: 'Failed to check subscription status.' });
+  }
+});
+*/
+
+// After deploying, call checkSubscription on auth state change
+auth.onAuthStateChanged(user => {
+  if (user) {
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'block';
+    // Call checkSubscription to toggle feature access
+    checkSubscription();
+  } else {
+    loginBtn.style.display = 'block';
+    logoutBtn.style.display = 'none';
+    uploadSection.style.display = 'none';
+    aiSection.style.display = 'none';
+    calculatorSection.style.display = 'none';
+    taxFormSection.style.display = 'none';
+    subscriptionSection.style.display = 'none';
+  }
+});
+
+// PDF Download Elements
+const downloadPdfBtn = document.getElementById('download-pdf-btn');
+
+// Function to Download PDF of Tax Form
+const downloadPDF = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Fetch the latest tax form
+    const taxFormsSnapshot = await db.collection('users').doc(user.uid).collection('taxForms')
+      .orderBy('generatedAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (taxFormsSnapshot.empty) {
+      alert('No tax form found.');
+      return;
+    }
+
+    const taxFormData = taxFormsSnapshot.docs[0].data();
+    const taxFormId = taxFormsSnapshot.docs[0].id;
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/generate-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ taxFormId })
+    });
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SA100_TaxForm_${taxFormId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } else {
+      const result = await response.json();
+      alert(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Download PDF Error:', error);
+    alert('Failed to download PDF.');
+  }
+};
+
+// Event Listener for Download Button
+downloadPdfBtn.addEventListener('click', downloadPDF);
+
+// ... existing code above ...
+
+// Function to Handle AI Assistant Follow-Up
+const handleAIFollowUp = async (message) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/ai/follow-up', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ response: message })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      appendMessage('AI', result.message);
+    } else {
+      appendMessage('AI', `Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('AI Follow-Up Error:', error);
+    appendMessage('AI', 'Failed to get follow-up from AI assistant.');
+  }
+};
+
+// Modify AI Assistant Send Button to Handle Follow-Up
+sendBtn.addEventListener('click', async () => {
+  const message = chatInput.value.trim();
+  if (message === '') return;
+
+  appendMessage('User', message);
+  chatInput.value = '';
+
+  try {
+    const user = auth.currentUser;
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ message })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      appendMessage('AI', result.message);
+      // Optionally, initiate follow-up based on AI response
+    } else {
+      appendMessage('AI', `Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('AI Chat Error:', error);
+    appendMessage('AI', 'Failed to get response from AI assistant.');
+  }
+});
+
+const functions = require('firebase-functions');
+
+const GOOGLE_PROJECT_ID = functions.config().google.project_id;
+const DOCUMENTAI_PROCESSOR_ID = functions.config().documentai.processor_id;
+const PLAID_CLIENT_ID = functions.config().plaid.client_id;
+const PLAID_SECRET = functions.config().plaid.secret;
+const OPENAI_API_KEY = functions.config().openai.key;
+const STRIPE_SECRET_KEY = functions.config().stripe.key;
+const FIREBASE_STORAGE_BUCKET = functions.config().firebase.storage_bucket;
+
+// Use these variables in your configurations
+
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const fileInput = document.getElementById('document');
+  const userId = document.getElementById('userId').value;
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert('Please select a file to upload.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('document', file);
+  formData.append('userId', userId);
+
+  try {
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+    if (response.ok) {
+      alert('File uploaded and processed successfully.');
+      console.log('Public URL:', result.publicUrl);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Upload Error:', error);
+    alert('An error occurred during upload.');
+  }
 });

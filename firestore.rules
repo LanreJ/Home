@@ -1,48 +1,29 @@
-// Example Firestore Rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-    
-    function hasActiveSubscription(userId) {
-      return exists(/databases/$(database)/documents/subscriptions/$(userId)) &&
-        get(/databases/$(database)/documents/subscriptions/$(userId)).data.active == true;
+
+    // Allow read/write access to authenticated users
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // User documents collection
-    match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
-      
-      match /documents/{docId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && hasActiveSubscription(userId);
-      }
+    // Specific rules for collections
+    match /parsedDocuments/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // Tax returns collection
-    match /taxReturns/{returnId} {
-      allow read: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId) && 
-                      hasActiveSubscription(request.resource.data.userId);
-      allow update: if isOwner(resource.data.userId) && 
-                      hasActiveSubscription(resource.data.userId);
-      allow delete: if false;
+    match /taxCalculations/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // Bank transactions collection
-    match /transactions/{userId}/{documents=**} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId) && hasActiveSubscription(userId);
+    match /bankFeeds/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // Subscriptions collection
-    match /subscriptions/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if false;  // Only backend can modify
+    match /taxForms/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
+
+    // Add more specific rules as needed
   }
 }

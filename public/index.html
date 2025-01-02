@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TaxStats AI</title>
+  <title>TaxStats AI - Upload Document</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-  <meta http-equiv="Refresh" content="0; url=login.html" />
+  <link rel="stylesheet" href="style.css">
   
   <!-- Inline CSS for your layout -->
   <style>
@@ -198,6 +198,18 @@
   </style>
 </head>
 <body>
-  <p>If you are not redirected automatically, follow this <a href="login.html">link</a>.</p>
+  <h1>Upload Tax Document</h1>
+  <form id="uploadForm">
+    <input type="file" id="document" name="document" accept=".pdf,.doc,.docx" required />
+    <input type="hidden" id="userId" name="userId" value="USER_ID_HERE" />
+    <button type="submit">Upload</button>
+  </form>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="script.js"></script>
 </body>
 </html>

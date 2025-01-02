@@ -3,9 +3,24 @@ import { logger } from 'firebase-functions';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+const admin = require('firebase-admin');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const credPath = resolve(__dirname, '../../service-account.json');
+const serviceAccount = require(credPath);
+
+// Ensure Firebase Admin is initialized only once
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  });
+}
+
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
 
 export class SecretsService {
     constructor() {
@@ -82,3 +97,23 @@ export class SecretsService {
 }
 
 export const secretsService = new SecretsService();
+
+const getSecret = async (secretName) => {
+  try {
+    const secretRef = db.collection('secrets').doc(secretName);
+    const doc = await secretRef.get();
+    if (!doc.exists) {
+      throw new Error(`Secret ${secretName} does not exist.`);
+    }
+    return doc.data().value;
+  } catch (error) {
+    console.error(`Error retrieving secret ${secretName}:`, error);
+    throw error;
+  }
+};
+
+module.exports = {
+  getSecret,
+  db,
+  bucket,
+};

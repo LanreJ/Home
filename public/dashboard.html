@@ -2,71 +2,549 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaxStats AI Dashboard</title>
-    <link rel="stylesheet" href="styles/dashboard.css">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .dashboard-sidebar {
+            height: 100vh;
+            background-color: #004d40;
+            color: white;
+        }
+        .dashboard-sidebar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: block;
+        }
+        .dashboard-sidebar a.active, .dashboard-sidebar a:hover {
+            background-color: #00695c;
+            font-weight: bold;
+        }
+        .dashboard-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #dee2e6;
+            padding: 10px 20px;
+        }
+        .dashboard-content {
+            padding: 20px;
+        }
+        .btn-teal {
+            background-color: #004d40;
+            color: white;
+        }
+        .upload-area {
+            border: 2px dashed #ced4da;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 5px;
+            background-color: #ffffff;
+        }
+        .upload-area:hover {
+            background-color: #e9ecef;
+        }
+        .document-grid, .account-grid, .tax-documents-grid {
+            margin-top: 15px;
+        }
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 5px;
+        }
+        .chat-input {
+            margin-top: 10px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Progress Tracker -->
-        <div class="progress-section">
-            <h2>Your Tax Return Progress</h2>
-            <div class="progress-bar">
-                <div id="progressIndicator" class="progress"></div>
-            </div>
-            <div class="steps">
-                <div class="step" data-step="documents">Upload Documents</div>
-                <div class="step" data-step="bank">Connect Bank</div>
-                <div class="step" data-step="review">Review Data</div>
-                <div class="step" data-step="submit">Submit Return</div>
-            </div>
-        </div>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 dashboard-sidebar">
+                <h4 class="text-center mt-3">TaxStats AI</h4>
+                <a href="#document-management" class="active">Document Management</a>
+                <a href="#ai-assistant">AI Assistant</a>
+                <a href="#tax-calculator">Tax Calculator</a>
+                <a href="#interactive-tax-forms">SA100 Forms</a>
+                <a href="#subscriptions">Subscriptions</a>
+                <a href="#downloads">Downloads</a>
+                <a href="#logout">Logout</a>
+            </nav>
 
-        <!-- Document Management -->
-        <div class="document-section">
-            <h2>Document Management</h2>
-            <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.png">
-            <button id="uploadButton">Upload Documents</button>
-            <button id="refreshButton">Refresh Files</button>
-            <div id="fileList" class="file-grid"></div>
-        </div>
-
-        <!-- Bank Integration -->
-        <div class="bank-section">
-            <h2>Bank Accounts</h2>
-            <button id="connectBankButton">Connect Bank Account</button>
-            <div id="bankAccounts" class="account-list"></div>
-        </div>
-
-        <!-- AI Assistant -->
-        <div id="aiChatModal" class="modal">
-            <div class="modal-content">
-                <h2>AI Assistant</h2>
-                <div id="chatMessages" class="chat-container"></div>
-                <input type="text" id="chatInput" placeholder="Ask a question...">
-                <button id="sendMessage">Send</button>
-            </div>
-        </div>
-
-        <!-- Tax Calculator -->
-        <div id="taxCalculatorModal" class="modal">
-            <div class="modal-content">
-                <h2>Tax Calculator</h2>
-                <div class="calculator-form">
-                    <div class="input-group">
-                        <label>Income</label>
-                        <input type="number" id="incomeInput">
-                    </div>
-                    <div class="input-group">
-                        <label>Expenses</label>
-                        <input type="number" id="expensesInput">
-                    </div>
-                    <button id="calculateTax">Calculate</button>
+            <!-- Main Content -->
+            <div class="col-md-9">
+                <div class="dashboard-header d-flex justify-content-between align-items-center">
+                    <h5>Welcome, <span id="userName">[User]</span></h5>
+                    <button class="btn btn-teal">Settings</button>
                 </div>
-                <div id="taxResults"></div>
+
+                <div class="dashboard-content">
+                    <!-- Document Management -->
+                    <section id="document-management">
+                        <h4>Document Management</h4>
+                        <p>Upload your tax-related documents for processing and parsing.</p>
+                        <form id="documentForm">
+                            <div class="mb-3">
+                                <label for="documentUpload" class="form-label">Upload Document</label>
+                                <input type="file" class="form-control" id="documentUpload" multiple accept=".pdf,.jpg,.png" />
+                            </div>
+                            <button type="submit" class="btn btn-teal">Upload</button>
+                        </form>
+                        <div id="taxDocumentsList" class="tax-documents-grid mt-3"></div>
+                        <hr>
+                    </section>
+
+                    <!-- AI Assistant -->
+                    <section id="ai-assistant">
+                        <h4>AI Assistant</h4>
+                        <p>Interact with our AI assistant to complete your tax return information.</p>
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <form id="chatForm" class="chat-input">
+                            <div class="input-group">
+                                <input type="text" id="chatInput" class="form-control" placeholder="Ask a question or provide details...">
+                                <button type="submit" class="btn btn-teal">Chat with Assistant</button>
+                            </div>
+                        </form>
+                        <hr>
+                    </section>
+
+                    <!-- Tax Calculator -->
+                    <section id="tax-calculator">
+                        <h4>Tax Calculator</h4>
+                        <p>View your estimated tax liability or refund based on the data provided.</p>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Amount (£)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="taxCalculatorTableBody">
+                                <tr>
+                                    <td>Total Income</td>
+                                    <td>50,000</td>
+                                </tr>
+                                <tr>
+                                    <td>Tax Deductions</td>
+                                    <td>5,000</td>
+                                </tr>
+                                <tr>
+                                    <td>Tax Liability</td>
+                                    <td>6,000</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <hr>
+                    </section>
+
+                    <!-- Interactive Tax Forms -->
+                    <section id="interactive-tax-forms">
+                        <h4>SA100 Tax Forms</h4>
+                        <p>Review and edit your dynamically generated tax forms.</p>
+                        <button id="openSA100FormBtn" class="btn btn-teal">Open SA100 Form</button>
+                        <hr>
+                    </section>
+
+                    <!-- Subscriptions -->
+                    <section id="subscriptions">
+                        <h4>Subscriptions</h4>
+                        <p>Manage your subscription to access premium features.</p>
+                        <button id="subscribeNowBtn" class="btn btn-teal">Subscribe Now</button>
+                        <hr>
+                    </section>
+
+                    <!-- Downloads -->
+                    <section id="downloads">
+                        <h4>Downloads</h4>
+                        <p>Download your completed tax forms and summaries in PDF format.</p>
+                        <button id="downloadSA100Btn" class="btn btn-teal">Download SA100</button>
+                        <button id="downloadSummaryBtn" class="btn btn-teal">Download Summary</button>
+                        <hr>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="scripts/dashboard.js"></script>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p id="loadingText">Processing...</p>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Firebase SDKs (ES Module) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+        import { getStorage } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js';
+        import { DocumentManager } from './modules/DocumentManager.js';
+        import { TaxFormManager } from './modules/TaxFormManager.js';
+        import { AIAssistant } from './modules/AIAssistant.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYXDpK8_dNn3f_c-n3q7_FCqoed-wRntk",
+            authDomain: "taxstats-document-ai.firebaseapp.com",
+            projectId: "taxstats-document-ai",
+            storageBucket: "taxstats-document-ai.firebasestorage.app",
+            messagingSenderId: "532562763606",
+            appId: "1:532562763606:web:3d9b6d04e4ed23700600f7"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        const documentManager = new DocumentManager(storage, db);
+        const taxFormManager = new TaxFormManager(db);
+        const aiAssistant = new AIAssistant(db);
+
+        // Authentication Check
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userName').textContent = user.displayName || user.email;
+            } else {
+                window.location.href = '/login.html';
+            }
+        });
+
+        // Logout Functionality
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            signOut(auth).then(() => {
+                window.location.href = '/login.html';
+            }).catch((error) => {
+                console.error('Logout Error:', error);
+            });
+        });
+
+        // Initialize Dashboard Function
+        function initializeDashboard() {
+            setupEventListeners();
+            loadOverviewData();
+            loadReferrals();
+            loadPayments();
+            loadTaxDocuments();
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Document Upload
+            const uploadBtn = document.getElementById('uploadBtn');
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileUpload);
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleDrop);
+
+            // Bank Integration
+            const connectBankBtn = document.getElementById('connectBankBtn');
+            connectBankBtn.addEventListener('click', connectBank);
+
+            // Tax Form Actions
+            document.getElementById('saveFormBtn').addEventListener('click', saveTaxForm);
+            document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+            document.getElementById('submitFormBtn').addEventListener('click', submitTaxReturn);
+
+            // AI Assistant
+            const chatForm = document.getElementById('chatForm');
+            chatForm.addEventListener('submit', handleAIChat);
+
+            // Other Buttons
+            document.getElementById('startOnboardingBtn').addEventListener('click', startOnboarding);
+            document.getElementById('contactSupportBtn').addEventListener('click', contactSupport);
+            document.getElementById('uploadTaxDocsBtn').addEventListener('click', () => fileInput.click());
+            document.getElementById('referrals').addEventListener('click', () => loadReferrals());
+            document.getElementById('payments').addEventListener('click', () => loadPayments());
+        }
+
+        // Handle File Upload
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+
+            showLoading(true, 'Uploading documents...');
+            try {
+                for (const file of files) {
+                    await documentManager.uploadAndProcess(file);
+                }
+                loadTaxDocuments();
+                showStatus('Documents uploaded successfully.', 'success');
+            } catch (error) {
+                console.error('Upload failed:', error);
+                showStatus('Document upload failed. Please try again.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Handle Drag Over
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+        }
+
+        // Handle Drop
+        function handleDrop(event) {
+            event.preventDefault();
+            const files = event.dataTransfer.files;
+            if (files.length) {
+                document.getElementById('fileInput').files = files;
+                handleFileUpload({ target: { files } });
+            }
+        }
+
+        // Connect Bank Function
+        async function connectBank() {
+            showLoading(true, 'Connecting to bank...');
+            try {
+                await documentManager.connectBank();
+                loadBankAccounts();
+                showStatus('Bank connected successfully.', 'success');
+            } catch (error) {
+                console.error('Bank connection failed:', error);
+                showStatus('Failed to connect bank. Please try again.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Load Overview Data
+        function loadOverviewData() {
+            // Fetch and display overview data from Firestore
+            // Example placeholders
+            document.getElementById('totalReferrals').textContent = '15';
+            document.getElementById('candidatesOnboarded').textContent = '8';
+            document.getElementById('totalEarnings').textContent = '£1,200';
+        }
+
+        // Load Referrals
+        function loadReferrals() {
+            // Fetch and display referrals from Firestore
+            // Example static data
+            const referrals = [
+                { name: 'Jane Doe', status: 'Onboarded', date: '2024-01-01' },
+                { name: 'John Smith', status: 'Pending', date: '2024-01-05' },
+            ];
+            const referralsTableBody = document.getElementById('referralsTableBody');
+            referralsTableBody.innerHTML = '';
+            referrals.forEach(referral => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${referral.name}</td>
+                    <td>${referral.status}</td>
+                    <td>${referral.date}</td>
+                    <td><button class="btn btn-sm btn-teal">Action</button></td>
+                `;
+                referralsTableBody.appendChild(row);
+            });
+        }
+
+        // Load Payments
+        function loadPayments() {
+            // Fetch and display payments from Firestore
+            // Example static data
+            const payments = [
+                { date: '2024-01-10', amount: '£100', status: 'Paid' },
+                { date: '2024-01-15', amount: '£200', status: 'Pending' },
+            ];
+            const paymentsTableBody = document.getElementById('paymentsTableBody');
+            paymentsTableBody.innerHTML = '';
+            payments.forEach(payment => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${payment.date}</td>
+                    <td>${payment.amount}</td>
+                    <td>${payment.status}</td>
+                `;
+                paymentsTableBody.appendChild(row);
+            });
+        }
+
+        // Load Tax Documents
+        async function loadTaxDocuments() {
+            try {
+                const documents = await documentManager.getTaxDocuments();
+                const taxDocumentsList = document.getElementById('taxDocumentsList');
+                taxDocumentsList.innerHTML = '';
+                documents.forEach(doc => {
+                    const div = document.createElement('div');
+                    div.classList.add('card', 'mb-2');
+                    div.innerHTML = `
+                        <div class="card-body">
+                            <p class="card-text">${doc.name}</p>
+                            <button class="btn btn-sm btn-teal">View</button>
+                        </div>
+                    `;
+                    taxDocumentsList.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Failed to load tax documents:', error);
+                showStatus('Failed to load tax documents.', 'danger');
+            }
+        }
+
+        // Save Tax Form
+        async function saveTaxForm() {
+            showLoading(true, 'Saving tax form...');
+            try {
+                const formData = taxFormManager.gatherFormData();
+                await taxFormManager.saveDraft(formData);
+                showStatus('Tax form saved as draft.', 'success');
+            } catch (error) {
+                console.error('Failed to save tax form:', error);
+                showStatus('Failed to save tax form.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Download PDF
+        async function downloadPdf() {
+            showLoading(true, 'Generating PDF...');
+            try {
+                const pdfBlob = await taxFormManager.generatePdf();
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'TaxReturn.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                showStatus('PDF downloaded successfully.', 'success');
+            } catch (error) {
+                console.error('Failed to download PDF:', error);
+                showStatus('Failed to download PDF.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Submit Tax Return
+        async function submitTaxReturn() {
+            showLoading(true, 'Submitting tax return...');
+            try {
+                await taxFormManager.submitReturn();
+                showStatus('Tax return submitted successfully.', 'success');
+            } catch (error) {
+                console.error('Failed to submit tax return:', error);
+                showStatus('Failed to submit tax return.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Handle AI Chat
+        async function handleAIChat(event) {
+            event.preventDefault();
+            const userInput = document.getElementById('chatInput').value.trim();
+            if (!userInput) return;
+
+            appendChatMessage('You', userInput);
+            document.getElementById('chatInput').value = '';
+
+            showLoading(true, 'Processing your question...');
+            try {
+                const response = await aiAssistant.processQuery(userInput);
+                appendChatMessage('AI Assistant', response);
+            } catch (error) {
+                console.error('AI Assistant Error:', error);
+                appendChatMessage('AI Assistant', 'Sorry, I encountered an error processing your request.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Append Chat Message
+        function appendChatMessage(sender, message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('mb-2');
+            msgDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Start Onboarding
+        function startOnboarding() {
+            // Implement onboarding process
+            showStatus('Onboarding started.', 'info');
+        }
+
+        // Contact Support
+        function contactSupport() {
+            // Implement support contact functionality
+            showStatus('Support team contacted.', 'info');
+        }
+
+        // Show Loading Overlay
+        function showLoading(show, text = 'Processing...') {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            if (show) {
+                loadingText.textContent = text;
+                loadingOverlay.hidden = false;
+            } else {
+                loadingOverlay.hidden = true;
+            }
+        }
+
+        // Show Status Messages
+        function showStatus(message, type = 'info') {
+            const statusMessages = document.getElementById('statusMessages');
+            const alertDiv = document.createElement('div');
+            alertDiv.classList.add('alert', `alert-${type}`, 'alert-dismissible', 'fade', 'show');
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            statusMessages.appendChild(alertDiv);
+            setTimeout(() => {
+                alertDiv.classList.remove('show');
+                alertDiv.classList.add('hide');
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Initialize Dashboard on Load
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    </script>
+    <!-- Your Custom Scripts -->
+    <script type="module" src="/js/scripts.js"></script>
 </body>
 </html>
