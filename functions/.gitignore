@@ -9,4 +9,6 @@ secrets.js
 key-file.json
 openai_key.txt
 Docaieditor.json
+service-account.json
+npm-debug.log
 

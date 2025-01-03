@@ -3,22 +3,10 @@
     "rules": "firestore.rules"
   },
   "functions": {
-    "source": "functions",
-    "region": "europe-west2"
+    "source": "functions"
   },
   "hosting": {
     "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "function": "app",
-        "region": "europe-west2"
-      }
-    ]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
   }
 }

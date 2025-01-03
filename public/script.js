@@ -1370,3 +1370,192 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     alert('An error occurred during upload.');
   }
 });
+
+// Handle Document Upload
+const uploadForm = document.getElementById('upload-form');
+const uploadStatus = document.getElementById('upload-status');
+
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById('document-file');
+  const userId = document.getElementById('user-id').value;
+
+  if (fileInput.files.length === 0) {
+    alert('Please select a file to upload.');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const storageRef = storage.ref().child(`documents/${userId}/${file.name}`);
+  
+  uploadStatus.innerText = 'Uploading...';
+
+  try {
+    const snapshot = await storageRef.put(file);
+    const downloadURL = await snapshot.ref.getDownloadURL();
+
+    // Save file info to Firestore
+    await db.collection('parsedDocuments').add({
+      userId: userId,
+      fileName: file.name,
+      fileUrl: downloadURL,
+      uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    uploadStatus.innerText = 'File uploaded and processing initiated.';
+    uploadForm.reset();
+
+    // Check subscription status
+    await checkSubscriptionStatus(userId);
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    uploadStatus.innerText = 'Error uploading file.';
+  }
+});
+
+// Handle AI Assistance
+const askAiButton = document.getElementById('ask-ai');
+const aiResponse = document.getElementById('ai-response');
+const userQuery = document.getElementById('user-query');
+
+askAiButton.addEventListener('click', async () => {
+  const query = userQuery.value.trim();
+  if (query === '') {
+    alert('Please enter a question for the AI.');
+    return;
+  }
+
+  aiResponse.innerText = 'AI is thinking...';
+
+  try {
+    const response = await fetch('/ai-assistant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, userId: 'testUserId' }) // Replace with actual userId
+    });
+
+    const data = await response.json();
+    aiResponse.innerText = data.answer;
+  } catch (error) {
+    console.error('Error communicating with AI Assistant:', error);
+    aiResponse.innerText = 'Error fetching AI response.';
+  }
+});
+
+// Existing Firebase Initialization...
+
+// Function to Authenticate User (Example using Firebase Auth)
+const authenticateUser = async () => {
+  // Implement your authentication logic here
+  // For example, using Firebase Authentication
+  // Replace with actual authentication method
+  const user = { uid: 'testUserId', email: 'user@example.com' };
+  return user;
+};
+
+// After Document Upload Success
+const uploadSuccessHandler = async (userId) => {
+  // Check subscription status
+  await checkSubscriptionStatus(userId);
+};
+
+// Modify existing uploadForm event listener
+uploadForm.addEventListener('submit', async (e) => {
+  // Existing upload logic...
+  
+  try {
+    // After successful upload
+    await db.collection('parsedDocuments').add({
+      // ...existing fields
+    });
+
+    uploadStatus.innerText = 'File uploaded and processing initiated.';
+    uploadForm.reset();
+
+    // Check subscription status
+    await checkSubscriptionStatus(userId);
+  } catch (error) {
+    // Error handling...
+  }
+});
+
+const downloadPdfButton = document.getElementById('download-pdf');
+
+downloadPdfButton.addEventListener('click', async () => {
+  try {
+    // Fetch the generated tax form data from Firestore
+    const userId = 'testUserId'; // Replace with actual userId
+    const taxFormSnapshot = await db.collection('taxForms').where('userId', '==', userId).get();
+
+    if (taxFormSnapshot.empty) {
+      alert('No tax form found to download.');
+      return;
+    }
+
+    const taxFormData = taxFormSnapshot.docs[0].data();
+
+    // Generate PDF using jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.text('SA100 Tax Form', 10, 10);
+    // Add more content based on taxFormData
+    doc.text(`User ID: ${taxFormData.userId}`, 10, 20);
+    doc.text(`Income: ${taxFormData.income}`, 10, 30);
+    doc.text(`Tax Liability: ${taxFormData.taxLiability}`, 10, 40);
+    // ... add other fields as needed
+
+    doc.save('SA100_Tax_Form.pdf');
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Failed to generate PDF.');
+  }
+});
+
+// ... existing code
+
+const connectBankButton = document.getElementById('connect-bank');
+const bankStatus = document.getElementById('bank-status');
+
+connectBankButton.addEventListener('click', async () => {
+  try {
+    const response = await fetch('/create-plaid-link-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'testUserId' }) // Replace with actual userId
+    });
+
+    const data = await response.json();
+    const linkToken = data.link_token;
+
+    const handler = Plaid.create({
+      token: linkToken,
+      onSuccess: async (public_token, metadata) => {
+        // Send public_token to backend to exchange for access_token
+        const res = await fetch('/exchange-public-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public_token: public_token, userId: 'testUserId' })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          bankStatus.innerText = 'Bank account connected successfully.';
+        } else {
+          bankStatus.innerText = 'Failed to connect bank account.';
+        }
+      },
+      onExit: (err, metadata) => {
+        if (err) {
+          console.error('Plaid Link Error:', err);
+          bankStatus.innerText = 'Error connecting bank account.';
+        }
+      }
+    });
+
+    handler.open();
+  } catch (error) {
+    console.error('Error initiating Plaid Link:', error);
+    bankStatus.innerText = 'Failed to initiate bank connection.';
+  }
+});

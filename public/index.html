@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TaxStats AI - Upload Document</title>
+  <title>TaxStats AI - Tax Return Preparation</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   
@@ -196,20 +196,84 @@
       margin-right: 10px; /* Add spacing between the logo and text */
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <h1>Upload Tax Document</h1>
-  <form id="uploadForm">
-    <input type="file" id="document" name="document" accept=".pdf,.doc,.docx" required />
-    <input type="hidden" id="userId" name="userId" value="USER_ID_HERE" />
-    <button type="submit">Upload</button>
-  </form>
+  <h1>TaxStats AI - Tax Return Preparation</h1>
+
+  <!-- Document Upload Section -->
+  <section id="upload-section">
+    <h2>Upload Your Documents</h2>
+    <form id="upload-form">
+      <input type="file" id="document-file" name="document" accept=".pdf,.doc,.docx" required />
+      <input type="text" id="user-id" name="userId" placeholder="Enter Your User ID" required />
+      <button type="submit">Upload Document</button>
+    </form>
+    <div id="upload-status"></div>
+  </section>
+
+  <!-- AI Assistance Section -->
+  <section id="ai-assistance">
+    <h2>AI Assistance</h2>
+    <textarea id="user-query" placeholder="Ask your question about your tax return..."></textarea>
+    <button id="ask-ai">Ask AI</button>
+    <div id="ai-response"></div>
+  </section>
+
+  <!-- Existing Tax Form Generation Section -->
+  <section id="tax-form">
+    <h2>Your SA100 Tax Form</h2>
+    <div id="form-container">
+      <!-- Dynamically generated form will appear here -->
+    </div>
+    <button id="download-pdf">Download PDF</button>
+  </section>
+
+  <!-- Add within <body> after existing sections -->
+  <section id="premium-features" style="display:none;">
+    <h2>Premium Features</h2>
+    <!-- Add premium feature components here -->
+  </section>
+
+  <!-- Add within <body> -->
+  <section id="bank-feed">
+    <h2>Connect Your Bank Account</h2>
+    <button id="connect-bank">Connect with Plaid</button>
+    <div id="bank-status"></div>
+  </section>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <script src="script.js"></script>
+
+  <script>
+    // Existing script.js code...
+
+    // Function to Check Subscription Status
+    async function checkSubscriptionStatus(userId) {
+      try {
+        const response = await fetch(`/check-subscription`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userId })
+        });
+
+        const data = await response.json();
+        if (data.isSubscribed) {
+          document.getElementById('premium-features').style.display = 'block';
+        } else {
+          document.getElementById('premium-features').style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Error checking subscription status:', error);
+      }
+    }
+
+    // Call this function after user logs in or is identified
+    checkSubscriptionStatus('testUserId'); // Replace with actual userId
+  </script>
 </body>
 </html>

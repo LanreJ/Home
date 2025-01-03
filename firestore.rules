@@ -11,7 +11,7 @@ service cloud.firestore {
     match /parsedDocuments/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-
+    
     match /taxCalculations/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }

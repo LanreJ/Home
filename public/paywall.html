@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Subscribe - TaxStats AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Upgrade to Premium</h1>
+  <form id="subscription-form">
+    <input type="email" id="email" name="email" placeholder="Enter your email" required />
+    <button type="submit">Subscribe with Stripe</button>
+  </form>
+  <div id="subscription-status"></div>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="paywall.js"></script>
+</body>
+</html>
