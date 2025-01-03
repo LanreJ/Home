@@ -1559,3 +1559,173 @@ connectBankButton.addEventListener('click', async () => {
     bankStatus.innerText = 'Failed to initiate bank connection.';
   }
 });
+
+// ...existing code...
+
+// Track Current User
+const currentUserIdSpan = document.getElementById('current-user-id');
+const logoutBtn = document.getElementById('logout-btn');
+
+// Document Upload
+const uploadForm = document.getElementById('upload-form');
+const uploadStatus = document.getElementById('upload-status');
+
+// AI Assistance
+const askAiBtn = document.getElementById('ask-ai-btn');
+const aiQuery = document.getElementById('ai-query');
+const aiResponseDiv = document.getElementById('ai-response');
+
+// Tax Form
+const downloadFormBtn = document.getElementById('download-form-btn');
+const taxFormContainer = document.getElementById('tax-form-container');
+
+// Paywall
+const paywallSection = document.getElementById('paywall-section');
+const subscribeBtn = document.getElementById('subscribe-btn');
+
+// On auth state changed
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    currentUserIdSpan.innerText = user.uid;
+    checkSubscriptionStatus(user.uid);
+  } else {
+    currentUserIdSpan.innerText = 'Not logged in';
+    paywallSection.style.display = 'none';
+  }
+});
+
+// Basic logout
+logoutBtn.addEventListener('click', () => {
+  auth.signOut();
+});
+
+// Check subscription status
+async function checkSubscriptionStatus(userId) {
+  try {
+    const response = await fetch('/check-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    const data = await response.json();
+    if (!data.isSubscribed) {
+      paywallSection.style.display = 'block';
+    } else {
+      paywallSection.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Error checking subscription status:', error);
+  }
+}
+
+// Handle Upload
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById('document-file');
+  if (!fileInput.files.length) {
+    alert('No file selected.');
+    return;
+  }
+  if (!auth.currentUser) {
+    alert('Please log in first.');
+    return;
+  }
+  uploadStatus.textContent = 'Uploading...';
+
+  const file = fileInput.files[0];
+  const userId = auth.currentUser.uid;
+  const storageRef = storage.ref(`documents/${userId}/${file.name}`);
+
+  try {
+    const snapshot = await storageRef.put(file);
+    const downloadURL = await snapshot.ref.getDownloadURL();
+    await db.collection('parsedDocuments').add({
+      userId,
+      fileName: file.name,
+      fileUrl: downloadURL,
+      uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    uploadStatus.textContent = 'File uploaded and processed.';
+    uploadForm.reset();
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    uploadStatus.textContent = 'Error uploading file.';
+  }
+});
+
+// Ask AI
+askAiBtn.addEventListener('click', async () => {
+  if (!auth.currentUser) {
+    alert('Please log in.');
+    return;
+  }
+  const query = aiQuery.value.trim();
+  if (!query) {
+    alert('Empty query!');
+    return;
+  }
+  aiResponseDiv.textContent = 'Thinking...';
+
+  try {
+    const response = await fetch('/ai-assistant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, userId: auth.currentUser.uid })
+    });
+    const data = await response.json();
+    aiResponseDiv.textContent = data.answer || 'No response.';
+  } catch (error) {
+    console.error('Error:', error);
+    aiResponseDiv.textContent = 'An error occurred.';
+  }
+});
+
+// Download SA100 Form
+downloadFormBtn.addEventListener('click', async () => {
+  if (!auth.currentUser) {
+    alert('Please log in.');
+    return;
+  }
+  // Fetch user’s completed tax form from Firestore
+  const forms = await db.collection('taxForms')
+    .where('userId', '==', auth.currentUser.uid)
+    .get();
+
+  if (forms.empty) {
+    alert('No SA100 form found.');
+    return;
+  }
+
+  const formData = forms.docs[0].data();
+
+  // Generate PDF with jsPDF or PDFKit client-side
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text('SA100 Tax Return', 10, 10);
+  doc.text(`User ID: ${formData.userId}`, 10, 20);
+  doc.text(`Income: ${formData.income}`, 10, 30);
+  doc.save('SA100_Tax_Return.pdf');
+});
+
+// Subscribe
+subscribeBtn.addEventListener('click', async () => {
+  if (!auth.currentUser) {
+    alert('Please log in.');
+    return;
+  }
+  const userEmail = auth.currentUser.email;
+  try {
+    const response = await fetch('/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail })
+    });
+    const session = await response.json();
+    const stripe = Stripe('YOUR_STRIPE_PUBLISHABLE_KEY');
+    await stripe.redirectToCheckout({ sessionId: session.id });
+  } catch (error) {
+    console.error('Error subscribing:', error);
+  }
+}
+
+// ...existing code...

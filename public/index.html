@@ -201,6 +201,13 @@
 <body>
   <h1>TaxStats AI - Tax Return Preparation</h1>
 
+  <!-- User Session Section -->
+  <section id="user-session">
+    <h2>Welcome</h2>
+    <p><strong>User ID:</strong> <span id="current-user-id"></span></p>
+    <button id="logout-btn">Logout</button>
+  </section>
+
   <!-- Document Upload Section -->
   <section id="upload-section">
     <h2>Upload Your Documents</h2>
@@ -240,6 +247,13 @@
     <h2>Connect Your Bank Account</h2>
     <button id="connect-bank">Connect with Plaid</button>
     <div id="bank-status"></div>
+  </section>
+
+  <!-- Subscription Paywall -->
+  <section id="paywall-section" style="display:none;">
+    <h2>Subscribe</h2>
+    <p>You need a subscription to continue.</p>
+    <button id="subscribe-btn">Subscribe Now</button>
   </section>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>

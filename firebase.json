@@ -7,6 +7,28 @@
   },
   "hosting": {
     "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/dashboard",
+        "destination": "/dashboard.html"
+      },
+      {
+        "source": "/ai-assistant",
+        "function": "app"
+      },
+      {
+        "source": "/hmrc-submit",
+        "function": "app"
+      },
+      {
+        "source": "**",
+        "destination": "/404.html"
+      }
+    ]
   }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaxStats AI - Login</title>
+  <title>TaxStats AI | Login</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
@@ -219,34 +219,110 @@
         color: var(--text);
         line-height: 1.6;
     }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #181818; /* Dark mode background */
+      color: #ffffff;            /* Dark mode text color */
+    }
+    .login-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0 auto;
+      width: 300px;
+    }
+    .logo {
+      width: 200px;
+      margin-bottom: 20px;
+    }
+    input, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+    }
+    input:hover, button:hover {
+      outline: 1px solid #ccc;
+    }
+    button {
+      background-color: #4caf50;
+      color: #ffffff;
+      cursor: pointer;
+    }
+    .toggle-theme {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+      background-color: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      padding: 5px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo-container">
-        <img src="TaxStats AI.png" alt="TaxStats AI Logo">
-    </div>
-    <h2>Welcome to TaxStats AI</h2>
-    <p class="description">
-      File your UK self-assessment tax return seamlessly in 30 minutes or less. Leverage AI to file correctly, minimise liabilities, and maximise tax breaks—completely legally!
-    </p>
-    <div class="toggle-buttons">
-      <button id="toggleLoginBtn" onclick="showLogin()">Login</button>
-      <button id="toggleSignUpBtn" onclick="showSignup()">Sign Up</button>
-    </div>
-    <form id="signUpForm" onsubmit="handleSignup(event)">
-      <input type="email" id="signup-email" placeholder="Email" required />
-      <input type="password" id="signup-password" placeholder="Password" required />
-      <button type="submit">Sign Up</button>
-      <button type="button" class="google-btn" onclick="googleSignIn()">Sign Up with Google</button>
-    </form>
-    <form id="loginForm" onsubmit="handleLogin(event)">
-      <input type="email" id="login-email" placeholder="Email" required />
-      <input type="password" id="login-password" placeholder="Password" required />
-      <button type="submit">Login</button>
-      <button type="button" class="google-btn" onclick="googleSignIn()">Login with Google</button>
-    </form>
-    <div id="status-message"></div>
+  <button class="toggle-theme" id="toggleThemeBtn">Light Mode</button>
+
+  <div class="login-container">
+    <img src="YOUR_LOGO_URL" alt="TaxStats AI Logo" class="logo" />
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
   </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script>
+    // Configure Firebase
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+
+    // Toggle dark/light mode
+    let darkMode = true;
+    toggleThemeBtn.addEventListener('click', () => {
+      darkMode = !darkMode;
+      if (!darkMode) {
+        document.body.style.backgroundColor = '#ffffff';
+        document.body.style.color = '#000000';
+        toggleThemeBtn.textContent = 'Dark Mode';
+      } else {
+        document.body.style.backgroundColor = '#181818';
+        document.body.style.color = '#ffffff';
+        toggleThemeBtn.textContent = 'Light Mode';
+      }
+    });
+
+    // Login
+    loginBtn.addEventListener('click', async () => {
+      try {
+        await auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value);
+        window.location.href = './dashboard.html';
+      } catch (error) {
+        alert('Login failed: ' + error.message);
+      }
+    });
+  </script>
 </body>
 </html>
