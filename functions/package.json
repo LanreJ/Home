@@ -9,51 +9,22 @@
     "test:watch": "jest --watch --config jest.config.cjs",
     "build": "tsc",
     "serve": "firebase emulators:start --only functions,hosting",
-    "deploy": "firebase deploy",
-    "lint": "eslint .",
-    "start": "npm run shell",
-    "shell": "firebase functions:shell",
-    "logs": "firebase functions:log"
+    "deploy": "firebase deploy"
   },
   "dependencies": {
-    "@google-cloud/documentai": "^4.2.0",
-    "@google-cloud/firestore": "^7.11.0",
-    "@google-cloud/secret-manager": "^5.6.0",
-    "axios": "^1.7.9",
+    "@google-cloud/documentai": "^4.1.0",
     "body-parser": "^1.20.0",
     "cors": "^2.8.5",
-    "dotenv": "^10.0.0",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.0",
-    "firebase": "^11.1.0",
-    "firebase-admin": "^10.0.0",
-    "firebase-functions": "^4.0.0",
-    "multer": "^1.4.5-lts.1",
+    "firebase-admin": "^11.0.0",
+    "firebase-functions": "^5.1.0",
     "openai": "^3.2.1",
-    "pdf-lib": "^1.17.1",
-    "pdfkit": "^0.13.0",
     "plaid": "^30.0.0",
-    "stripe": "^8.0.0"
+    "stripe": "^8.210.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.22.0",
-    "@babel/preset-env": "^7.22.0",
     "@testing-library/jest-dom": "^5.16.5",
-    "babel-jest": "^29.0.0",
     "cypress": "^13.17.0",
-    "jest": "^29.5.0",
-    "jest-environment-jsdom": "^29.0.0",
-    "jsdom": "^21.1.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "coverageThreshold": {
-      "global": {
-        "branches": 80,
-        "functions": 80,
-        "lines": 80
-      }
-    }
+    "jest": "^29.5.0"
   },
   "engines": {
     "node": "18"

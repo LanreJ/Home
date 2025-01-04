@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Tax Return Preparation with AI Assistance",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "firebase serve",
     "deploy": "firebase deploy",
@@ -15,14 +16,14 @@
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "firebase-admin": "^10.0.0",
-    "firebase-functions": "^4.0.0",
+    "firebase-admin": "^11.0.0",
+    "firebase-functions": "^5.1.0", // Updated to latest as per deployment warning
     "multer": "^1.4.5-lts.1",
     "openai": "^3.2.1",
     "pdfkit": "^0.13.0",
-    "plaid": "^30.0.0",
-    "stripe": "^8.0.0",
-    "@google-cloud/documentai": "^4.2.0",
+    "plaid": "^14.0.0",
+    "stripe": "^8.210.0",
+    "@google-cloud/documentai": "^4.1.0", // Corrected version
     "body-parser": "^1.20.0"
   },
   "engines": {

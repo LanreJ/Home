@@ -1,44 +1,29 @@
-import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import { logger } from 'firebase-functions';
-import { readFile } from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 const admin = require('firebase-admin');
+const functions = require('firebase-functions');
+const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+const { logger } = require('firebase-functions');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const credPath = resolve(__dirname, '../../service-account.json');
-const serviceAccount = require(credPath);
-
-// Ensure Firebase Admin is initialized only once
+// Initialize Firebase Admin only once
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    storageBucket: functions.config().app.storage_bucket
   });
 }
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
-export class SecretsService {
+class SecretsService {
     constructor() {
         this.cache = new Map();
         this.initialized = false;
+        this.client = null;
     }
 
     async init() {
         try {
-            // Fix path resolution for ES modules
-            const credPath = resolve(__dirname, '../../service-account.json');
-            const credentials = JSON.parse(await readFile(credPath, 'utf8'));
-            
-            this.client = new SecretManagerServiceClient({
-                credentials,
-                projectId: process.env.PROJECT_ID || 'taxstats-document-ai'
-            });
-            
+            // Initialize SecretManagerServiceClient with default credentials
+            this.client = new SecretManagerServiceClient();
             this.initialized = true;
             logger.info('SecretsService initialized');
             return true;
@@ -55,13 +40,19 @@ export class SecretsService {
         return this.initialized;
     }
 
+    /**
+     * Retrieves a secret from Secret Manager with caching.
+     * @param {string} name - The name of the secret.
+     * @param {any} fallback - The fallback value if retrieval fails.
+     * @returns {Promise<string|null>} The secret value or fallback.
+     */
     async getSecret(name, fallback = null) {
         if (!await this.ensureInitialized()) {
             return fallback;
         }
 
         const cached = this.cache.get(name);
-        if (cached?.value && Date.now() - cached.timestamp < 3600000) {
+        if (cached?.value && Date.now() - cached.timestamp < 3600000) { // 1 hour cache
             return cached.value;
         }
 
@@ -79,6 +70,10 @@ export class SecretsService {
         }
     }
 
+    /**
+     * Retrieves multiple integration secrets concurrently.
+     * @returns {Promise<Object>} An object containing all integration secrets.
+     */
     async getIntegrationSecrets() {
         const [hmrc, plaid, stripe, openai] = await Promise.all([
             this.getSecret('HMRC_CLIENT_SECRET'),
@@ -90,15 +85,24 @@ export class SecretsService {
         return { hmrc, plaid, stripe, openai };
     }
 
+    /**
+     * Clears the secret cache.
+     */
     clearCache() {
         this.cache.clear();
         logger.info('Secret cache cleared');
     }
 }
 
-export const secretsService = new SecretsService();
+const secretsService = new SecretsService();
 
-const getSecret = async (secretName) => {
+/**
+ * Retrieves a secret from Firestore.
+ * @param {string} secretName - The name of the secret document.
+ * @returns {Promise<string>} The secret value.
+ * @throws Will throw an error if the secret does not exist or retrieval fails.
+ */
+const getSecretFromFirestore = async (secretName) => {
   try {
     const secretRef = db.collection('secrets').doc(secretName);
     const doc = await secretRef.get();
@@ -113,7 +117,8 @@ const getSecret = async (secretName) => {
 };
 
 module.exports = {
-  getSecret,
+  getSecret: getSecretFromFirestore,
   db,
   bucket,
+  secretsService
 };

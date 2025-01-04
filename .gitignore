@@ -135,6 +135,8 @@ Thumbs.db
 *-service-account.json
 *.key.json
 docaieditor.json
+Key-file.json
+openai_key.txt
 
 # Tests
 coverage/

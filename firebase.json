@@ -7,27 +7,27 @@
   },
   "hosting": {
     "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
       {
-        "source": "/login",
-        "destination": "/login.html"
-      },
-      {
-        "source": "/dashboard",
+        "source": "/dashboard/**",
         "destination": "/dashboard.html"
       },
       {
-        "source": "/ai-assistant",
-        "function": "app"
+        "source": "/login/**",
+        "destination": "/login.html"
       },
       {
-        "source": "/hmrc-submit",
-        "function": "app"
+        "source": "/",
+        "destination": "/login.html"
       },
       {
         "source": "**",
-        "destination": "/404.html"
+        "destination": "/login.html"
       }
     ]
   }

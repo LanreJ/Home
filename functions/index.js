@@ -3,17 +3,16 @@ const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
 const { DocumentProcessorServiceClient } = require('@google-cloud/documentai');
-const { Configuration, OpenAIApi } = require('openai'); // Compatible with openai@3.2.1
+const { Configuration: OpenAIConfiguration, OpenAIApi } = require('openai'); // Alias OpenAI Configuration
 const Stripe = require('stripe');
 const bodyParser = require('body-parser');
-const Plaid = require('plaid');
+const { Configuration: PlaidConfiguration, PlaidApi, Environments } = require('plaid'); // Alias Plaid Configuration
 
-console.log('Configuration:', Configuration); // Should not be undefined
-console.log('OpenAIApi:', OpenAIApi);         // Should not be undefined
+// Logging Configuration Objects
+console.log('OpenAIApi:', OpenAIApi); // Safe to log non-sensitive parts
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin without explicit credentials
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
   storageBucket: functions.config().app.storage_bucket
 });
 
@@ -24,25 +23,44 @@ const storage = admin.storage();
 const documentClient = new DocumentProcessorServiceClient();
 
 // Initialize OpenAI
-try {
-  const openaiConfig = new Configuration({
-    apiKey: functions.config().openai.api_key,
-  });
-  const openai = new OpenAIApi(openaiConfig);
-  console.log('OpenAI initialized successfully');
-} catch (error) {
-  console.error('Error initializing OpenAI:', error);
-}
+const openaiConfig = new OpenAIConfiguration({
+  apiKey: functions.config().openai.api_key,
+});
+const openai = new OpenAIApi(openaiConfig);
 
 // Initialize Stripe
-const stripe = Stripe(functions.config().stripe.secret_key);
+let stripe;
+try {
+  stripe = Stripe(functions.config().stripe.secret_key);
+  console.log('Stripe initialized successfully');
+} catch (error) {
+  console.error('Error initializing Stripe:', error);
+}
 
 // Initialize Plaid
-const plaidClient = new Plaid.Client({
-  clientID: functions.config().plaid.client_id,
-  secret: functions.config().plaid.secret,
-  env: Plaid.environments[functions.config().plaid.env],
-});
+let plaidClient;
+try {
+  const plaidEnv = functions.config().plaid.env.toLowerCase();
+
+  if (!Environments[plaidEnv]) {
+    throw new Error(`Invalid Plaid environment: ${plaidEnv}`);
+  }
+
+  const configuration = new PlaidConfiguration({
+    basePath: Environments[plaidEnv],
+    baseOptions: {
+      headers: {
+        'PLAID-CLIENT-ID': functions.config().plaid.client_id,
+        'PLAID-SECRET': functions.config().plaid.secret,
+      },
+    },
+  });
+
+  plaidClient = new PlaidApi(configuration);
+  console.log('Plaid initialized successfully');
+} catch (error) {
+  console.error('Error initializing Plaid:', error);
+}
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -104,11 +122,11 @@ app.post('/create-checkout-session', async (req, res) => {
       customer_email: email,
       line_items: [
         {
-          price: 'YOUR_STRIPE_PRICE_ID', // Replace with your actual Stripe Price ID
+          price: functions.config().stripe.price_id, // Use config variable
           quantity: 1
         }
       ],
-      success_url: 'https://taxstats-document-ai.web.app/dashboard.html', // Replace with your actual success URL
+      success_url: 'https://yourdomain.com/success', // Replace with your actual success URL
       cancel_url: 'https://yourdomain.com/cancel' // Replace with your actual cancel URL
     });
     res.json({ id: session.id });

@@ -1,289 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>TaxStats AI | Dashboard</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      background-color: #181818; /* dark mode */
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      padding: 10px;
-      background-color: #282828;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    .logo {
-      width: 60px;
-      margin-right: 10px;
-    }
-    .header-title {
-      flex: 1;
-      font-size: 1.5rem;
-    }
-    .toggle-theme {
-      background-color: transparent;
-      border: 1px solid #fff;
-      color: #fff;
-      padding: 5px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    .content-container {
-      display: flex;
-      flex-wrap: wrap;
-      flex: 1;
-    }
-
-    .section-box {
-      flex: 1 1 calc(50% - 20px);
-      margin: 10px;
-      padding: 15px;
-      background-color: #2c2c2c;
-      border-radius: 6px;
-    }
-    .section-box h2 {
-      margin-top: 0;
-    }
-    /* Hover effect for buttons, inputs */
-    button:hover, input:hover, label:hover {
-      outline: 1px solid #ccc;
-    }
-
-    footer {
-      background-color: #282828;
-      color: #ccc;
-      text-align: center;
-      padding: 8px;
-    }
-
-    @media only screen and (max-width: 768px) {
-      .section-box {
-        flex: 1 1 100%;
-      }
-      header, footer {
-        text-align: center;
-      }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaxStats AI Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <img src="YOUR_LOGO_URL" alt="TaxStats AI Logo" class="logo" />
-    <div class="header-title">TaxStats AI Dashboard</div>
-    <button class="toggle-theme" id="toggleThemeBtn">Light Mode</button>
-    <button id="logoutBtn" style="margin-left: 10px;">Logout</button>
-  </header>
+  <div class="container">
+    <aside class="sidebar">
+      <h2>TaxStats AI</h2>
+      <nav>
+        <ul>
+          <li><a href="/dashboard.html">Dashboard</a></li>
+          <li><a href="/upload.html">Upload Documents</a></li>
+          <li><a href="/ai-assistant.html">AI Assistant</a></li>
+          <li><a href="/tax-form.html">Tax Form</a></li>
+          <li><a href="#" id="logout">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header>
+        <h1>Welcome to Your Dashboard</h1>
+      </header>
+      <section class="content">
+        <!-- Dashboard content goes here -->
+        <div class="content-container">
+          <!-- Document Management -->
+          <div class="section-box" id="documentManagement">
+            <h2>Document Management</h2>
+            <form id="uploadForm">
+              <input
+                type="file"
+                id="documentFile"
+                accept=".pdf,.doc,.docx"
+                style="margin-bottom: 5px;"
+              />
+              <button type="submit">Upload</button>
+            </form>
+            <div id="uploadStatus"></div>
+          </div>
 
-  <div class="content-container">
-    <!-- Document Management -->
-    <div class="section-box" id="documentManagement">
-      <h2>Document Management</h2>
-      <form id="uploadForm">
-        <input
-          type="file"
-          id="documentFile"
-          accept=".pdf,.doc,.docx"
-          style="margin-bottom: 5px;"
-        />
-        <button type="submit">Upload</button>
-      </form>
-      <div id="uploadStatus"></div>
-    </div>
+          <!-- Tax Calculator -->
+          <div class="section-box" id="taxCalculator">
+            <h2>Tax Calculator</h2>
+            <p>Calculated tax will appear here.</p>
+            <div id="calculationResult"></div>
+          </div>
 
-    <!-- Tax Calculator -->
-    <div class="section-box" id="taxCalculator">
-      <h2>Tax Calculator</h2>
-      <p>Calculated tax will appear here.</p>
-      <div id="calculationResult"></div>
-    </div>
+          <!-- AI Assistant -->
+          <div class="section-box" id="aiAssistant">
+            <h2>AI Assistant</h2>
+            <textarea
+              id="aiQuery"
+              placeholder="Ask me about your tax return..."
+              style="width:100%;height:80px;"
+            ></textarea>
+            <button id="askAiBtn">Ask AI</button>
+            <div id="aiResponse"></div>
+          </div>
 
-    <!-- AI Assistant -->
-    <div class="section-box" id="aiAssistant">
-      <h2>AI Assistant</h2>
-      <textarea
-        id="aiQuery"
-        placeholder="Ask me about your tax return..."
-        style="width:100%;height:80px;"
-      ></textarea>
-      <button id="askAiBtn">Ask AI</button>
-      <div id="aiResponse"></div>
-    </div>
-
-    <!-- Tax Return Viewer -->
-    <div class="section-box" id="taxReturnViewer">
-      <h2>Tax Return Viewer</h2>
-      <div id="taxFormContainer"></div>
-      <button id="downloadFormBtn">Download Tax Form</button>
-      <button id="submitToHmrcBtn">Submit to HMRC</button>
-    </div>
+          <!-- Tax Return Viewer -->
+          <div class="section-box" id="taxReturnViewer">
+            <h2>Tax Return Viewer</h2>
+            <div id="taxFormContainer"></div>
+            <button id="downloadFormBtn">Download Tax Form</button>
+            <button id="submitToHmrcBtn">Submit to HMRC</button>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <footer>
-    &copy; <span id="yearSpan"></span> TaxStats AI. All rights reserved.
-  </footer>
-
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-  <script>
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-    // DOM References
-    const logoutBtn = document.getElementById('logoutBtn');
-    const toggleThemeBtn = document.getElementById('toggleThemeBtn');
-    const uploadForm = document.getElementById('uploadForm');
-    const documentFile = document.getElementById('documentFile');
-    const uploadStatus = document.getElementById('uploadStatus');
-    const aiQuery = document.getElementById('aiQuery');
-    const aiResponse = document.getElementById('aiResponse');
-    const askAiBtn = document.getElementById('askAiBtn');
-    const downloadFormBtn = document.getElementById('downloadFormBtn');
-    const submitToHmrcBtn = document.getElementById('submitToHmrcBtn');
-    const taxFormContainer = document.getElementById('taxFormContainer');
-    const yearSpan = document.getElementById('yearSpan');
-    yearSpan.textContent = new Date().getFullYear();
-
-    // THEME TOGGLE
-    let darkMode = true;
-    toggleThemeBtn.addEventListener('click', () => {
-      darkMode = !darkMode;
-      if (!darkMode) {
-        document.body.style.backgroundColor = '#ffffff';
-        document.body.style.color = '#000000';
-        toggleThemeBtn.textContent = 'Dark Mode';
-      } else {
-        document.body.style.backgroundColor = '#181818';
-        document.body.style.color = '#ffffff';
-        toggleThemeBtn.textContent = 'Light Mode';
-      }
-    });
-
-    // Auth check
-    auth.onAuthStateChanged((user) => {
-      if (!user) {
-        window.location.href = './login.html';
-      }
-    });
-
-    // Logout
-    logoutBtn.addEventListener('click', () => {
-      auth.signOut();
-    });
-
-    // Document Upload
-    uploadForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!documentFile.files.length) {
-        uploadStatus.textContent = 'No file selected.';
-        return;
-      }
-      const file = documentFile.files[0];
-      if (!auth.currentUser) {
-        uploadStatus.textContent = 'Not logged in.';
-        return;
-      }
-      uploadStatus.textContent = 'Uploading...';
-      const userId = auth.currentUser.uid;
-      const storageRef = storage.ref(`documents/${userId}/${file.name}`);
-      try {
-        const snapshot = await storageRef.put(file);
-        const downloadURL = await snapshot.ref.getDownloadURL();
-        await db.collection('parsedDocuments').add({
-          userId,
-          fileName: file.name,
-          fileUrl: downloadURL,
-          uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        uploadStatus.textContent = 'File uploaded successfully. Parsing...';
-        // Document AI call logic can go here
-      } catch (error) {
-        console.error('Upload error:', error);
-        uploadStatus.textContent = 'File upload failed.';
-      }
-    });
-
-    // Ask AI
-    askAiBtn.addEventListener('click', async () => {
-      const query = aiQuery.value.trim();
-      if (!query) {
-        aiResponse.textContent = 'Please enter a query.';
-        return;
-      }
-      if (!auth.currentUser) {
-        aiResponse.textContent = 'Not logged in.';
-        return;
-      }
-      aiResponse.textContent = 'Thinking...';
-      try {
-        const response = await fetch('/ai-assistant', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query,
-            userId: auth.currentUser.uid
-          })
-        });
-        const data = await response.json();
-        aiResponse.textContent = data.answer || 'No response.';
-      } catch (error) {
-        console.error('AI error:', error);
-        aiResponse.textContent = 'AI request failed.';
-      }
-    });
-
-    // Download SA100 Form
-    downloadFormBtn.addEventListener('click', async () => {
-      // Example fetch from Firestore
-      if (!auth.currentUser) return;
-      const userId = auth.currentUser.uid;
-      const forms = await db
-        .collection('taxForms')
-        .where('userId', '==', userId)
-        .get();
-      if (forms.empty) {
-        alert('No SA100 form found.');
-        return;
-      }
-      // Generate PDF client-side or request a server function
-      alert('SA100 PDF generation not yet implemented.');
-    });
-
-    // Submit to HMRC
-    submitToHmrcBtn.addEventListener('click', async () => {
-      // Example HMRC submission logic
-      try {
-        const response = await fetch('/hmrc-submit', { method: 'POST' });
-        const data = await response.json();
-        alert(data.message || 'Submitted to HMRC successfully.');
-      } catch (error) {
-        console.error('HMRC error:', error);
-        alert('HMRC submission failed.');
-      }
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>

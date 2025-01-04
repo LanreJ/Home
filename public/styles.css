@@ -1,8 +1,102 @@
-/* Reset default margins and paddings */
+/* Reset and base styles */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+body {
+  background-color: #121212;
+  color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  height: 100vh;
+  display: flex;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 250px;
+  background-color: #1f1f1f;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h2 {
+  color: #ffffff;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.sidebar nav ul {
+  list-style: none;
+}
+
+.sidebar nav ul li {
+  margin-bottom: 20px;
+}
+
+.sidebar nav ul li a {
+  color: #bbbbbb;
+  text-decoration: none;
+  font-size: 18px;
+  transition: color 0.3s;
+}
+
+.sidebar nav ul li a:hover {
+  color: #ffffff;
+}
+
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  padding: 40px;
+  background-color: #1e1e1e;
+  overflow-y: auto;
+}
+
+header {
+  margin-bottom: 30px;
+}
+
+header h1 {
+  font-size: 32px;
+  color: #ffffff;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+    padding: 15px;
+  }
+
+  .sidebar h2 {
+    font-size: 20px;
+  }
+
+  .sidebar nav ul li a {
+    font-size: 16px;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  header h1 {
+    font-size: 28px;
+  }
 }
 
 :root {

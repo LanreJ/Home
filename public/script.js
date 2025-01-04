@@ -1729,3 +1729,137 @@ subscribeBtn.addEventListener('click', async () => {
 }
 
 // ...existing code...
+
+fetch('https://<REGION>-<PROJECT_ID>.cloudfunctions.net/checkSubscriptionStatus', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ userId: 'hello' })
+})
+.then(response => {
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
+  return response.json();
+})
+.then(data => {
+  console.log(data);
+})
+.catch(error => {
+  console.error('Error:', error);
+});
+
+// Authentication and Routing
+document.addEventListener('DOMContentLoaded', () => {
+  const logoutButton = document.getElementById('logout');
+
+  logoutButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await firebase.auth().signOut();
+      window.location.href = '/login.html';
+    } catch (error) {
+      console.error('Logout Error:', error);
+    }
+  });
+
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      // User is signed in
+      window.location.href = '/dashboard.html';
+    } else {
+      // No user is signed in
+      window.location.href = '/login.html';
+    }
+  });
+});
+
+// File Upload Functionality
+async function uploadDocument(file) {
+  try {
+    const storageRef = firebase.storage().ref();
+    const fileRef = storageRef.child(`documents/${file.name}`);
+    await fileRef.put(file);
+    const fileURL = await fileRef.getDownloadURL();
+    console.log('File Uploaded Successfully:', fileURL);
+    return fileURL;
+  } catch (error) {
+    console.error('File Upload Error:', error);
+    throw error;
+  }
+}
+
+// AI Assistant Query
+async function askAI(question) {
+  try {
+    const response = await fetch('/api/ai-assistant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ question })
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const data = await response.json();
+    console.log('AI Response:', data.answer);
+    return data.answer;
+  } catch (error) {
+    console.error('AI Assistant Error:', error);
+    throw error;
+  }
+}
+
+// Plaid Integration
+async function connectBankAccount() {
+  try {
+    const response = await fetch('/api/plaid/connect', {
+      method: 'POST'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to initiate Plaid connection');
+    }
+
+    const data = await response.json();
+    window.location.href = data.link_url;
+  } catch (error) {
+    console.error('Plaid Integration Error:', error);
+    throw error;
+  }
+}
+
+// Generate and Download SA100 Tax Form as PDF
+async function generateTaxForm(data) {
+  try {
+    const response = await fetch('/api/generate-tax-form', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate tax form');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'SA100_Tax_Form.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    console.log('Tax form downloaded successfully');
+  } catch (error) {
+    console.error('Tax Form Generation Error:', error);
+    throw error;
+  }
+}
