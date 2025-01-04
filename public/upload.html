@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaxStats AI | Upload Documents</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <h2>TaxStats AI</h2>
+      <nav>
+        <ul>
+          <li><a href="/dashboard.html">Dashboard</a></li>
+          <li><a href="/upload.html">Upload Documents</a></li>
+          <li><a href="/ai-assistant.html">AI Assistant</a></li>
+          <li><a href="/tax-form.html">Tax Form</a></li>
+          <li><a href="#" id="logout">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header>
+        <h1>Upload Your Tax Documents</h1>
+      </header>
+      <section class="content">
+        <form id="uploadForm">
+          <label for="document">Select Document:</label>
+          <input type="file" id="document" name="document" accept=".pdf,.docx,.xlsx" required>
+          
+          <button type="submit">Upload</button>
+        </form>
+        <div id="uploadStatus"></div>
+      </section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('document');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select a file to upload.');
+        return;
+      }
+
+      try {
+        const fileURL = await uploadDocument(file);
+        document.getElementById('uploadStatus').innerText = 'File uploaded successfully!';
+        console.log('Uploaded File URL:', fileURL);
+      } catch (error) {
+        document.getElementById('uploadStatus').innerText = 'File upload failed. Please try again.';
+      }
+    });
+  </script>
+</body>
+</html>

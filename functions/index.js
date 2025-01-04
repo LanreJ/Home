@@ -4,14 +4,14 @@ const express = require('express');
 const cors = require('cors');
 const { DocumentProcessorServiceClient } = require('@google-cloud/documentai');
 const { Configuration: OpenAIConfiguration, OpenAIApi } = require('openai'); // Alias OpenAI Configuration
-const Stripe = require('stripe');
 const bodyParser = require('body-parser');
 const { Configuration: PlaidConfiguration, PlaidApi, Environments } = require('plaid'); // Alias Plaid Configuration
+const PDFDocument = require('pdfkit'); // Install pdfkit: npm install pdfkit
 
 // Logging Configuration Objects
-console.log('OpenAIApi:', OpenAIApi); // Safe to log non-sensitive parts
+console.log('OpenAIApi:', OpenAIApi); // Should now correctly log the OpenAIApi class
 
-// Initialize Firebase Admin without explicit credentials
+// Initialize Firebase Admin with correct storage bucket
 admin.initializeApp({
   storageBucket: functions.config().app.storage_bucket
 });
@@ -23,24 +23,26 @@ const storage = admin.storage();
 const documentClient = new DocumentProcessorServiceClient();
 
 // Initialize OpenAI
-const openaiConfig = new OpenAIConfiguration({
-  apiKey: functions.config().openai.api_key,
-});
-const openai = new OpenAIApi(openaiConfig);
-
-// Initialize Stripe
-let stripe;
+let openai;
 try {
-  stripe = Stripe(functions.config().stripe.secret_key);
-  console.log('Stripe initialized successfully');
+  const openAIConfig = new OpenAIConfiguration({
+    apiKey: functions.config().openai.key, // Ensure this config is set
+  });
+  openai = new OpenAIApi(openAIConfig);
+  console.log('OpenAI initialized successfully');
 } catch (error) {
-  console.error('Error initializing Stripe:', error);
+  console.error('Error initializing OpenAI:', error);
 }
 
-// Initialize Plaid
+// Initialize Plaid with Validation
 let plaidClient;
 try {
-  const plaidEnv = functions.config().plaid.env.toLowerCase();
+  const plaidConfig = functions.config().plaid;
+  if (!plaidConfig || !plaidConfig.env || !plaidConfig.client_id || !plaidConfig.secret) {
+    throw new Error('Plaid configuration is incomplete.');
+  }
+
+  const plaidEnv = plaidConfig.env.toLowerCase();
 
   if (!Environments[plaidEnv]) {
     throw new Error(`Invalid Plaid environment: ${plaidEnv}`);
@@ -50,8 +52,8 @@ try {
     basePath: Environments[plaidEnv],
     baseOptions: {
       headers: {
-        'PLAID-CLIENT-ID': functions.config().plaid.client_id,
-        'PLAID-SECRET': functions.config().plaid.secret,
+        'PLAID-CLIENT-ID': plaidConfig.client_id,
+        'PLAID-SECRET': plaidConfig.secret,
       },
     },
   });
@@ -62,9 +64,10 @@ try {
   console.error('Error initializing Plaid:', error);
 }
 
+// Initialize Express App
 const app = express();
-app.use(cors({ origin: true }));
-app.use(express.json());
+app.use(cors());
+app.use(bodyParser.json());
 app.use('/webhook', bodyParser.raw({ type: 'application/json' }));
 
 // AI Assistant Endpoint
@@ -169,7 +172,53 @@ app.post('/hmrc-submit', async (req, res) => {
   }
 });
 
+// API Endpoint to Generate Tax Form
+app.post('/generate-tax-form', async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    // Fetch user data from Firestore
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const userData = userDoc.data();
+
+    // Create a PDF Document
+    const doc = new PDFDocument();
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=SA100_Tax_Form.pdf');
+
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Add content to PDF
+    doc.fontSize(20).text('SA100 Tax Form', { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(12).text(`Name: ${userData.name}`);
+    doc.text(`Email: ${userData.email}`);
+    doc.text(`Address: ${userData.address}`);
+    doc.text(`Income: ${userData.income}`);
+    // Add more fields as necessary
+
+    // Finalize PDF file
+    doc.end();
+  } catch (error) {
+    console.error('Error generating tax form:', error);
+    res.status(500).json({ error: 'Failed to generate tax form.' });
+  }
+});
+
+// Example Express route
+app.get('/', (req, res) => {
+  res.send('Hello from Firebase!');
+});
+
 // Export the Express app as a Firebase Function
-exports.app = functions.region('europe-west2').https.onRequest(app);
+exports.api = functions.region('us-central1').https.onRequest(app);
 
 

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaxStats AI | Tax Form</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <h2>TaxStats AI</h2>
+      <nav>
+        <ul>
+          <li><a href="/dashboard.html">Dashboard</a></li>
+          <li><a href="/upload.html">Upload Documents</a></li>
+          <li><a href="/ai-assistant.html">AI Assistant</a></li>
+          <li><a href="/tax-form.html">Tax Form</a></li>
+          <li><a href="#" id="logout">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header>
+        <h1>Your Tax Form</h1>
+      </header>
+      <section class="content">
+        <button id="downloadTaxForm">Download SA100 Tax Form</button>
+        <div id="taxFormStatus"></div>
+      </section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+  <script>
+    document.getElementById('downloadTaxForm').addEventListener('click', async () => {
+      try {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+          alert('Please log in to download your tax form.');
+          return;
+        }
+        const userId = user.uid;
+        const data = { userId };
+        await generateTaxForm(data);
+        document.getElementById('taxFormStatus').innerText = 'Tax form downloaded successfully!';
+      } catch (error) {
+        document.getElementById('taxFormStatus').innerText = 'Failed to download tax form.';
+      }
+    });
+  </script>
+</body>
+</html>

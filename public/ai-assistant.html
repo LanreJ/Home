@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaxStats AI | AI Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <h2>TaxStats AI</h2>
+      <nav>
+        <ul>
+          <li><a href="/dashboard.html">Dashboard</a></li>
+          <li><a href="/upload.html">Upload Documents</a></li>
+          <li><a href="/ai-assistant.html">AI Assistant</a></li>
+          <li><a href="/tax-form.html">Tax Form</a></li>
+          <li><a href="#" id="logout">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <header>
+        <h1>AI Assistant</h1>
+      </header>
+      <section class="content">
+        <div class="ai-interface">
+          <textarea id="question" placeholder="Ask your tax-related question here..." rows="4" required></textarea>
+          <button id="askButton">Ask AI</button>
+        </div>
+        <div id="aiResponse" class="response"></div>
+      </section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+  <script>
+    document.getElementById('askButton').addEventListener('click', async () => {
+      const question = document.getElementById('question').value.trim();
+      if (!question) {
+        alert('Please enter a question.');
+        return;
+      }
+
+      try {
+        const answer = await askAI(question);
+        document.getElementById('aiResponse').innerText = answer;
+      } catch (error) {
+        document.getElementById('aiResponse').innerText = 'Failed to get response from AI.';
+      }
+    });
+  </script>
+</body>
+</html>

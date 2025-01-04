@@ -151,4 +151,5 @@ __tests__/
 # filepath: /workspaces/Home/functions/.gitignore
 .env
 service-account.json
+functions/.env
 
